@@ -2,13 +2,13 @@ use crate::game::Game;
 
 #[derive(Debug)]
 pub enum AppState {
-    Main,
+    MainMenu,
     Exiting,
 }
 
 #[derive(Debug)]
 pub struct App {
-    pub current_screen: AppState,
+    pub current_state: AppState,
     pub game: Option<Game>,
     pub exit: bool,
 }
@@ -16,7 +16,7 @@ pub struct App {
 impl App {
     pub fn new() -> Self {
         return Self {
-            current_screen: AppState::Main,
+            current_state: AppState::MainMenu,
             game: None,
             exit: false,
         };
