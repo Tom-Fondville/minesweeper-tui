@@ -3,7 +3,10 @@ use std::io::{self};
 use crossterm::event::{self, Event, KeyCode, KeyEvent};
 use ratatui::DefaultTerminal;
 
-use crate::app::{App, AppState};
+use crate::{
+    app::{App, AppState},
+    game::board::{Board, Difficulty},
+};
 
 pub struct TerminalApp {}
 
@@ -24,7 +27,7 @@ impl TerminalApp {
 
             Self::handle_tick(app, terminal);
 
-            if app.exit {
+            if app.need_to_exit() {
                 break Ok(());
             }
         }
@@ -38,9 +41,10 @@ impl TerminalApp {
         // I can figure how to do generic things yet, so for the moment i will go with match
         // statements and keep my Trait thing
         // terminal_state.draw(terminal, app);
-        match app.current_state {
+        match app.get_current_state() {
             AppState::MainMenu => TerminalMainMenuState::draw(terminal, app),
-            AppState::Exiting => TerminalExitingState::draw(terminal, app),
+            AppState::Exiting(_) => TerminalExitingState::draw(terminal, app),
+            AppState::InGame(_) => TerminalInGameState::draw(terminal, app),
         }
 
         let event = event::read();
@@ -49,12 +53,15 @@ impl TerminalApp {
         }
 
         if let Event::Key(key_event) = event.unwrap() {
-            match app.current_state {
+            match app.get_current_state() {
                 AppState::MainMenu => {
                     TerminalMainMenuState::handle_key_event(terminal, app, key_event)
                 }
-                AppState::Exiting => {
+                AppState::Exiting(_) => {
                     TerminalExitingState::handle_key_event(terminal, app, key_event)
+                }
+                AppState::InGame(_) => {
+                    TerminalInGameState::handle_key_event(terminal, app, key_event);
                 }
             }
         }
@@ -78,16 +85,20 @@ pub trait TerminalState {
 pub struct TerminalMainMenuState {}
 impl TerminalState for TerminalMainMenuState {
     fn draw(terminal: &mut DefaultTerminal, app: &mut App) {
-        let _ = terminal.draw(|frame| frame.render_widget("hello world", frame.area()));
+        let _ = terminal.draw(|frame| {
+            frame.render_widget("Press enter to play. Press q to quit", frame.area())
+        });
     }
 
     fn handle_key_event(terminal: &mut DefaultTerminal, app: &mut App, key_event: KeyEvent) {
         match key_event.kind {
-            event::KeyEventKind::Press => {
-                if let KeyCode::Char('q') = key_event.code {
-                    app.current_state = AppState::Exiting
+            event::KeyEventKind::Press => match key_event.code {
+                KeyCode::Enter => {
+                    app.change_current_state(AppState::InGame(Board::new(Difficulty::Easy)))
                 }
-            }
+                KeyCode::Char('q') => app.change_current_state(AppState::Exiting(false)),
+                _ => (),
+            },
             event::KeyEventKind::Repeat => (),
             event::KeyEventKind::Release => (),
         }
@@ -105,10 +116,32 @@ impl TerminalState for TerminalExitingState {
     fn handle_key_event(terminal: &mut DefaultTerminal, app: &mut App, key_event: KeyEvent) {
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
-                KeyCode::Enter => app.exit = true,
-                // KeyCode::Enter => panic!(),
-                _ => app.current_state = AppState::MainMenu,
+                KeyCode::Enter => app.change_current_state(AppState::Exiting(true)),
+                KeyCode::Char('q') => app.change_current_state(AppState::Exiting(true)),
+                _ => match app.get_last_state() {
+                    Some(last_state) => app.change_current_state(last_state.clone()),
+                    None => app.change_current_state(AppState::MainMenu),
+                },
             },
+            event::KeyEventKind::Repeat => (),
+            event::KeyEventKind::Release => (),
+        }
+    }
+}
+
+pub struct TerminalInGameState {}
+impl TerminalState for TerminalInGameState {
+    fn draw(terminal: &mut DefaultTerminal, app: &mut App) {
+        let _ = terminal.draw(|frame| frame.render_widget("in game", frame.area()));
+    }
+
+    fn handle_key_event(terminal: &mut DefaultTerminal, app: &mut App, key_event: KeyEvent) {
+        match key_event.kind {
+            event::KeyEventKind::Press => {
+                if let KeyCode::Char('q') = key_event.code {
+                    app.change_current_state(AppState::Exiting(false));
+                }
+            }
             event::KeyEventKind::Repeat => (),
             event::KeyEventKind::Release => (),
         }
