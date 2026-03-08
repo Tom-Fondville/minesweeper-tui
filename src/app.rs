@@ -1,24 +1,48 @@
-use crate::game::Game;
+use crate::game::board::Board;
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub enum AppState {
     MainMenu,
-    Exiting,
+    InGame(Board),
+    Exiting(bool),
 }
 
 #[derive(Debug)]
 pub struct App {
-    pub current_state: AppState,
-    pub game: Option<Game>,
-    pub exit: bool,
+    current_state: AppState,
+    last_state: Option<AppState>,
 }
 
 impl App {
     pub fn new() -> Self {
-        return Self {
+        Self {
             current_state: AppState::MainMenu,
-            game: None,
-            exit: false,
-        };
+            last_state: None,
+        }
+    }
+
+    pub fn get_current_state(&self) -> &AppState {
+        &self.current_state
+    }
+
+    pub fn get_last_state(&self) -> &Option<AppState> {
+        &self.last_state
+    }
+
+    pub fn need_to_exit(&self) -> bool {
+        match self.current_state {
+            AppState::Exiting(exit) => exit,
+            _ => false,
+        }
+    }
+    pub fn change_current_state(&mut self, state: AppState) {
+        self.last_state = Some(self.current_state.clone());
+        self.current_state = state;
+    }
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
     }
 }

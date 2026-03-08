@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct Board {
     rows: u64,
     column: u64,
@@ -56,7 +56,7 @@ impl Board {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub struct Cell {
     pub cell_type: CellType,
     pub is_flaged: bool,
@@ -84,21 +84,21 @@ impl Cell {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum CellType {
     Bomb,
     Numbered(u8),
     Empty,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Status {
     Running,
     Loosed,
     Won,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum Difficulty {
     Easy,
     Medium,
