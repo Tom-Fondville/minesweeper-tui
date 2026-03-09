@@ -37,15 +37,13 @@ impl Board {
         ];
 
         match difficulty {
-            Difficulty::Easy => {
-                return Self {
-                    rows: 10,
-                    column: 10,
-                    grid,
-                    status: Status::Running,
-                    difficulty,
-                };
-            }
+            Difficulty::Easy => Self {
+                rows: 10,
+                column: 10,
+                grid,
+                status: Status::Running,
+                difficulty,
+            },
             Difficulty::Medium => todo!(),
             Difficulty::Hard => todo!(),
             Difficulty::Custom {
@@ -53,6 +51,10 @@ impl Board {
                 column_number,
             } => todo!(),
         }
+    }
+
+    pub fn get_difficulty(&self) -> &Difficulty {
+        &self.difficulty
     }
 }
 
@@ -107,4 +109,18 @@ pub enum Difficulty {
         rows_number: u64,
         column_number: u64,
     },
+}
+
+impl Difficulty {
+    pub fn as_string(&self) -> String {
+        match self {
+            Difficulty::Easy => "easy".to_string(),
+            Difficulty::Medium => "medium".to_string(),
+            Difficulty::Hard => "hard".to_string(),
+            Difficulty::Custom {
+                rows_number,
+                column_number,
+            } => format!("custom: {}x{}", rows_number, column_number),
+        }
+    }
 }
