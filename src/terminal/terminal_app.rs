@@ -5,9 +5,8 @@ use std::io::{self};
 use crate::{
     game::app::{App, AppState},
     terminal::terminal_state::{
-        terminal_exiting_state::TerminalExitingState,
-        terminal_in_game_state::TerminalMainMenuState,
-        terminal_main_menu_state::TerminalInGameState,
+        terminal_exiting_state::TerminalExitingState, terminal_in_game_state::TerminalInGameState,
+        terminal_main_menu_state::TerminalMainMenuState,
     },
 };
 
