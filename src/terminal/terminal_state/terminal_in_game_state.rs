@@ -1,45 +1,51 @@
+use color_eyre::owo_colors::OwoColorize;
 use crossterm::event::{self, KeyCode, KeyEvent};
 use ratatui::{
     DefaultTerminal, Frame,
-    layout::{Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Flex, Layout, Rect},
     style::{Color, Style, Stylize},
-    text::Line,
-    widgets::Paragraph,
+    text::{Line, Span},
+    widgets::{Block, Borders, Paragraph},
 };
 
 use crate::game::{
     app::{App, AppState},
-    board::{Board, CellType},
+    board::{Board, Cell, CellType},
 };
 
 pub struct TerminalInGameState {}
 impl TerminalInGameState {
+    pub fn render_cell(frame: &mut Frame, cell: &Cell) {
+        let cell_area = Rect::new(x, y, width, height)
+    }
+
     pub fn draw_grid(frame: &mut Frame, area: Rect, board: &Board) {
         let grid = board.get_grid();
 
-        let rows = grid.len() as u16;
-        let collumns = grid[0].len() as u16;
+        let rows = board.get_rows_count();
+        let collumns = board.get_columns_count();
         let cell_size = (area.height / rows).min(area.width / collumns);
         let grid_width = cell_size * collumns;
         let grid_height = cell_size * rows;
+        println!("width {}, height {}", grid_width, grid_height);
 
         let grid_area = Rect {
             x: area.x + (area.width - grid_width) / 2,
             y: area.y + (area.height - grid_height) / 2,
-            width: grid_width,
-            height: grid_height,
+            width: 10,
+            height: 10,
         };
 
-        let row_chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints(vec![Constraint::Length(cell_size); rows as usize])
-            .split(grid_area);
+        frame.render_widget(Block::default().bg(Color::Red), grid_area);
+        return;
+
+        let row_chunks =
+            Layout::vertical(vec![Constraint::Length(cell_size); rows as usize]).split(grid_area);
 
         for (y, cells_row) in grid.iter().enumerate() {
-            let col_chunks = Layout::default()
-                .direction(Direction::Horizontal)
-                .constraints(vec![Constraint::Length(cell_size); collumns as usize])
-                .split(row_chunks[y]);
+            let col_chunks =
+                Layout::horizontal(vec![Constraint::Length(cell_size); collumns as usize])
+                    .split(row_chunks[y]);
 
             for (x, cell) in cells_row.iter().enumerate() {
                 let block_cell = match cell.cell_type {
@@ -54,7 +60,11 @@ impl TerminalInGameState {
                         .centered(),
                 };
 
-                frame.render_widget(block_cell, col_chunks[x]);
+                frame.render_widget(
+                    // block_cell.block(Block::default().borders(Borders::ALL)),
+                    block_cell,
+                    col_chunks[x],
+                );
             }
         }
     }
@@ -78,6 +88,7 @@ impl TerminalInGameState {
             frame.render_widget(title, header);
 
             TerminalInGameState::draw_grid(frame, body, board);
+
             // let row_chunks = Layout::default()
             //     .direction(Direction::Vertical)
             //     .constraints(vec![Constraint::Ratio(1, grid.len() as u32); grid.len()])
