@@ -1,7 +1,7 @@
 #[derive(Debug, Clone)]
 pub struct Board {
-    rows: u64,
-    column: u64,
+    rows: u16,
+    column: u16,
     grid: Vec<Vec<Cell>>,
     status: Status,
     difficulty: Difficulty,
@@ -155,6 +155,14 @@ impl Board {
 
     pub fn get_grid(&self) -> &Vec<Vec<Cell>> {
         &self.grid
+    }
+
+    pub fn get_rows_count(&self) -> u16 {
+        self.rows
+    }
+
+    pub fn get_columns_count(&self) -> u16 {
+        self.column
     }
 }
 
