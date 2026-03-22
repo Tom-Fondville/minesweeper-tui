@@ -10,30 +10,36 @@ use crate::{
     },
 };
 
-pub struct TerminalApp {}
+pub struct TerminalApp {
+    app: App,
+}
 
 impl TerminalApp {
-    pub fn start() -> color_eyre::Result<()> {
+    pub fn new() -> Self {
+        Self { app: App::new() }
+    }
+
+    pub fn start(&mut self) -> color_eyre::Result<()> {
         color_eyre::install()?;
-        let _ = ratatui::run(|terminal| Self::run(terminal, &mut App::new()));
+        let _ = ratatui::run(|terminal| self.run(terminal));
         Ok(())
     }
 
-    fn run(terminal: &mut DefaultTerminal, app: &mut App) -> io::Result<()> {
+    fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         loop {
-            Self::handle_tick(app, terminal);
+            self.handle_tick(terminal);
 
-            if app.need_to_exit() {
+            if self.app.need_to_exit() {
                 break Ok(());
             }
         }
     }
 
-    fn handle_tick(app: &mut App, terminal: &mut DefaultTerminal) {
-        match app.get_current_state() {
+    fn handle_tick(&mut self, terminal: &mut DefaultTerminal) {
+        match self.app.get_current_state() {
             AppState::MainMenu => TerminalMainMenuState::draw(terminal),
             AppState::Exiting(_) => TerminalExitingState::draw(terminal),
-            AppState::InGame(board) => TerminalInGameState::draw(terminal, board),
+            AppState::InGame(board) => TerminalInGameState::new(board).draw(terminal),
         }
 
         let event = event::read();
@@ -42,10 +48,16 @@ impl TerminalApp {
         }
 
         if let Event::Key(key_event) = event.unwrap() {
-            match app.get_current_state() {
-                AppState::MainMenu => TerminalMainMenuState::handle_key_event(app, key_event),
-                AppState::Exiting(_) => TerminalExitingState::handle_key_event(app, key_event),
-                AppState::InGame(_) => TerminalInGameState::handle_key_event(app, key_event),
+            match self.app.get_current_state() {
+                AppState::MainMenu => {
+                    TerminalMainMenuState::handle_key_event(&mut self.app, key_event)
+                }
+                AppState::Exiting(_) => {
+                    TerminalExitingState::handle_key_event(&mut self.app, key_event)
+                }
+                AppState::InGame(_) => {
+                    TerminalInGameState::handle_key_event(&mut self.app, key_event)
+                }
             }
         }
     }

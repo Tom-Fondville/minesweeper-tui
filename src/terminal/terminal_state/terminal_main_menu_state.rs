@@ -1,5 +1,5 @@
 use crossterm::event::{self, KeyCode, KeyEvent};
-use ratatui::{DefaultTerminal, style::Stylize, text::Line, widgets::Block};
+use ratatui::DefaultTerminal;
 
 use crate::game::{
     app::{App, AppState},
