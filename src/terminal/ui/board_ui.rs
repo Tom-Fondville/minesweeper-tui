@@ -59,7 +59,7 @@ impl<'a> Widget for BoardUi<'a> {
                     .split(row_chunks[y]);
 
             for (x, cell) in cells_row.iter().enumerate() {
-                if x == self.cursor_position.row.into() && y == self.cursor_position.column.into() {
+                if x as u16 == self.cursor_position.row && y as u16 == self.cursor_position.column {
                     render_cell(cell, true, col_chunks[x], buf);
                 } else {
                     render_cell(cell, false, col_chunks[x], buf);

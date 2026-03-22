@@ -43,7 +43,7 @@ impl<'a> TerminalInGameState<'a> {
         }
     }
 
-    fn move_cursor(mut self, direction: MoveDirection) {
+    fn move_cursor(&mut self, direction: MoveDirection) {
         match direction {
             MoveDirection::Up => {
                 let new_row = u16::saturating_sub(self.cursor_position.row, 1);
@@ -98,10 +98,10 @@ impl<'a> TerminalInGameState<'a> {
         });
     }
 
-    pub fn handle_key_event(self, app: &mut App, key_event: KeyEvent) {
+    pub fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) {
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
-                KeyCode::Char('q') => app.change_current_state(AppState::Exiting(false)),
+                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
                 KeyCode::Char('h') => self.move_cursor(MoveDirection::Left),
                 KeyCode::Char('j') => self.move_cursor(MoveDirection::Down),
                 KeyCode::Char('k') => self.move_cursor(MoveDirection::Up),

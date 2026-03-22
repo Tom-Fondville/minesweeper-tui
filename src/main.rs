@@ -1,12 +1,6 @@
-use minesweeper_tui::{
-    game::board::{Board, Difficulty},
-    terminal::terminal_app::TerminalApp,
-};
+use minesweeper_tui::terminal::terminal_app::TerminalApp;
 
 fn main() {
-    println!("Hello, world!");
-    let board: Board = Board::new(Difficulty::Easy);
-    println!("board: {:?}", board);
-
-    let _ = TerminalApp::start();
+    let mut app = TerminalApp::new();
+    let _ = app.start();
 }

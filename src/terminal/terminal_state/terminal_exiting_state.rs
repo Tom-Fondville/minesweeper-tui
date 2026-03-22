@@ -14,8 +14,8 @@ impl TerminalExitingState {
     pub fn handle_key_event(app: &mut App, key_event: KeyEvent) {
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
-                KeyCode::Enter => app.change_current_state(AppState::Exiting(true)),
-                KeyCode::Char('q') => app.change_current_state(AppState::Exiting(true)),
+                KeyCode::Enter => app.change_current_state(AppState::Exiting),
+                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
                 _ => match app.get_last_state() {
                     Some(last_state) => app.change_current_state(last_state.clone()),
                     None => app.change_current_state(AppState::MainMenu),
