@@ -1,0 +1,89 @@
+use crossterm::event::{self, Event};
+use ratatui::DefaultTerminal;
+use std::io::{self};
+
+use crate::{
+    game::board::{Board, Difficulty},
+    terminal::terminal_state::{
+        terminal_exiting_state::TerminalExitingState, terminal_in_game_state::TerminalInGameState,
+        terminal_main_menu_state::TerminalMainMenuState,
+    },
+};
+
+#[derive(Clone)]
+pub enum AppState {
+    MainMenu,
+    InGame,
+    Exiting,
+}
+
+pub struct App {
+    pub current_state: AppState,
+    pub last_state: Option<AppState>,
+    pub in_game_state: TerminalInGameState,
+    pub need_exit: bool,
+}
+
+impl App {
+    pub fn new() -> Self {
+        Self {
+            current_state: AppState::MainMenu,
+            last_state: None,
+            in_game_state: TerminalInGameState::new(Board::new(Difficulty::Easy)),
+            need_exit: false,
+        }
+    }
+
+    pub fn start(&mut self) -> color_eyre::Result<()> {
+        color_eyre::install()?;
+        let _ = ratatui::run(|terminal| self.run(terminal));
+        Ok(())
+    }
+
+    pub fn change_current_state(&mut self, state: AppState) {
+        self.last_state = Some(self.current_state.clone());
+        self.current_state = state;
+    }
+
+    pub fn start_new_board(&mut self, difficulty: Difficulty) {
+        self.in_game_state = TerminalInGameState::new(Board::new(difficulty));
+        self.change_current_state(AppState::InGame);
+    }
+
+    fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+        loop {
+            self.handle_tick(terminal);
+
+            if self.need_exit {
+                break Ok(());
+            }
+        }
+    }
+
+    fn handle_tick(&mut self, terminal: &mut DefaultTerminal) {
+        match self.current_state {
+            AppState::MainMenu => TerminalMainMenuState::draw(terminal),
+            AppState::Exiting => TerminalExitingState::draw(terminal),
+            AppState::InGame => self.in_game_state.draw(terminal),
+        }
+
+        let event = event::read();
+        if event.is_err() {
+            panic!()
+        }
+
+        if let Event::Key(key_event) = event.unwrap() {
+            match self.current_state {
+                AppState::MainMenu => TerminalMainMenuState::handle_key_event(self, key_event),
+                AppState::Exiting => TerminalExitingState::handle_key_event(self, key_event),
+                AppState::InGame => TerminalInGameState::handle_key_event(self, key_event),
+            }
+        }
+    }
+}
+
+impl Default for App {
+    fn default() -> Self {
+        Self::new()
+    }
+}

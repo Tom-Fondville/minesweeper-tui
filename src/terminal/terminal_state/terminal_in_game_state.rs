@@ -3,15 +3,15 @@ use ratatui::{
     DefaultTerminal,
     layout::{Constraint, Direction, Layout},
     style::Stylize,
-    text::Line,
+    text::{Line, Span},
 };
 
 use crate::{
-    game::{
+    game::board::Board,
+    terminal::{
         app::{App, AppState},
-        board::Board,
+        ui::board_ui::BoardUi,
     },
-    terminal::ui::board_ui::BoardUi,
 };
 
 enum MoveDirection {
@@ -30,13 +30,14 @@ impl CursorPositon {
         Self { row, column }
     }
 }
-pub struct TerminalInGameState<'a> {
-    board: &'a Board,
+
+pub struct TerminalInGameState {
+    board: Board,
     cursor_position: CursorPositon,
 }
 
-impl<'a> TerminalInGameState<'a> {
-    pub fn new(board: &'a Board) -> Self {
+impl TerminalInGameState {
+    pub fn new(board: Board) -> Self {
         Self {
             board,
             cursor_position: CursorPositon::new(0, 0),
@@ -70,7 +71,7 @@ impl<'a> TerminalInGameState<'a> {
         }
     }
 
-    pub fn draw(self, terminal: &mut DefaultTerminal) {
+    pub fn draw(&self, terminal: &mut DefaultTerminal) {
         let _ = terminal.draw(|frame| {
             let chunks = Layout::default()
                 .direction(Direction::Vertical)
@@ -91,21 +92,25 @@ impl<'a> TerminalInGameState<'a> {
             .centered();
             frame.render_widget(title, header);
 
-            frame.render_widget(BoardUi::new(self.board, &self.cursor_position), body);
+            frame.render_widget(BoardUi::new(&self.board, &self.cursor_position), body);
 
-            let footer_text = Line::from("minesweeper-tui".italic());
-            frame.render_widget(footer_text, footer);
+            let footer_text = "minesweeper-tui ".italic();
+            let coords_text = Span::from(format!(
+                "{}, {}",
+                self.cursor_position.row, self.cursor_position.column
+            ));
+            frame.render_widget(Line::from(vec![footer_text, coords_text]), footer);
         });
     }
 
-    pub fn handle_key_event(&mut self, app: &mut App, key_event: KeyEvent) {
+    pub fn handle_key_event(app: &mut App, key_event: KeyEvent) {
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
                 KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-                KeyCode::Char('h') => self.move_cursor(MoveDirection::Left),
-                KeyCode::Char('j') => self.move_cursor(MoveDirection::Down),
-                KeyCode::Char('k') => self.move_cursor(MoveDirection::Up),
-                KeyCode::Char('l') => self.move_cursor(MoveDirection::Right),
+                KeyCode::Char('h') => app.in_game_state.move_cursor(MoveDirection::Left),
+                KeyCode::Char('j') => app.in_game_state.move_cursor(MoveDirection::Down),
+                KeyCode::Char('k') => app.in_game_state.move_cursor(MoveDirection::Up),
+                KeyCode::Char('l') => app.in_game_state.move_cursor(MoveDirection::Right),
                 _ => {}
             },
             event::KeyEventKind::Repeat => (),
