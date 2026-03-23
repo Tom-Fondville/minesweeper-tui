@@ -53,16 +53,18 @@ impl<'a> Widget for BoardUi<'a> {
         let row_chunks =
             Layout::vertical(vec![Constraint::Length(CELL_HEIGHT); rows as usize]).split(grid_area);
 
-        for (y, cells_row) in grid.iter().enumerate() {
+        for (row, cells_row) in grid.iter().enumerate() {
             let col_chunks =
                 Layout::horizontal(vec![Constraint::Length(CELL_WIDTH); collumns as usize])
-                    .split(row_chunks[y]);
+                    .split(row_chunks[row]);
 
-            for (x, cell) in cells_row.iter().enumerate() {
-                if x as u16 == self.cursor_position.row && y as u16 == self.cursor_position.column {
-                    render_cell(cell, true, col_chunks[x], buf);
+            for (column, cell) in cells_row.iter().enumerate() {
+                if row as u16 == self.cursor_position.row
+                    && column as u16 == self.cursor_position.column
+                {
+                    render_cell(cell, true, col_chunks[column], buf);
                 } else {
-                    render_cell(cell, false, col_chunks[x], buf);
+                    render_cell(cell, false, col_chunks[column], buf);
                 }
             }
         }

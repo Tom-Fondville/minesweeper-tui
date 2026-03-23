@@ -1,6 +1,6 @@
-use minesweeper_tui::terminal::terminal_app::TerminalApp;
+use minesweeper_tui::terminal::app::App;
 
 fn main() {
-    let mut app = TerminalApp::new();
+    let mut app = App::new();
     let _ = app.start();
 }
