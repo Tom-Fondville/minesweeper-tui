@@ -164,34 +164,65 @@ impl Board {
     pub fn get_columns_count(&self) -> u16 {
         self.column
     }
+
+    pub fn reveal_cell(&self, position: &Position) {
+        let cell = match self.grid.get(position.row) {
+            Some(row) => row.get(position.column),
+            None => None,
+        };
+
+        // match cell {
+        //     Some(cell) => cell.reveal(),
+        //     None => {}
+        // }
+        //
+    }
+}
+
+pub struct Position {
+    pub row: usize,
+    pub column: usize,
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Cell {
     pub cell_type: CellType,
-    pub is_flaged: bool,
+    pub state: CellState,
 }
 
 impl Cell {
     pub fn new_bomb() -> Self {
         Self {
             cell_type: CellType::Bomb,
-            is_flaged: false,
+            state: CellState::Hiden,
         }
     }
     pub fn new_numbered(number: u8) -> Self {
         Self {
             cell_type: CellType::Numbered(number),
-            is_flaged: false,
+            state: CellState::Hiden,
         }
     }
 
     pub fn new_empty() -> Self {
         Self {
             cell_type: CellType::Empty,
-            is_flaged: false,
+            state: CellState::Hiden,
         }
     }
+
+    pub fn reveal(&mut self) {
+        if let CellState::Hiden = self.state {
+            self.state = CellState::Revealed;
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
+pub enum CellState {
+    Hiden,
+    Flaged,
+    Revealed,
 }
 
 #[derive(Debug, Clone, Copy)]
