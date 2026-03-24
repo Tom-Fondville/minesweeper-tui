@@ -44,6 +44,7 @@ impl TerminalInGameState {
         }
     }
 
+    fn reveal_cell(&mut self) {}
     fn move_cursor(&mut self, direction: MoveDirection) {
         match direction {
             MoveDirection::Up => {
@@ -59,7 +60,7 @@ impl TerminalInGameState {
             }
             MoveDirection::Right => {
                 let new_column = u16::saturating_add(self.cursor_position.column, 1);
-                if new_column > self.board.get_columns_count() + 1 {
+                if new_column > self.board.get_columns_count() - 1 {
                     return;
                 }
                 self.cursor_position = CursorPositon::new(self.cursor_position.row, new_column);
@@ -111,6 +112,7 @@ impl TerminalInGameState {
                 KeyCode::Char('j') => app.in_game_state.move_cursor(MoveDirection::Down),
                 KeyCode::Char('k') => app.in_game_state.move_cursor(MoveDirection::Up),
                 KeyCode::Char('l') => app.in_game_state.move_cursor(MoveDirection::Right),
+                KeyCode::Enter => app.in_game_state.reveal_cell(),
                 _ => {}
             },
             event::KeyEventKind::Repeat => (),
