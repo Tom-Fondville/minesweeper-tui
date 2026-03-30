@@ -1,7 +1,7 @@
 #[derive(Debug, Clone)]
 pub struct Board {
     rows: u16,
-    column: u16,
+    columns: u16,
     grid: Vec<Vec<Cell>>,
     status: Status,
     difficulty: Difficulty,
@@ -135,7 +135,7 @@ impl Board {
         match difficulty {
             Difficulty::Easy => Self {
                 rows: 10,
-                column: 10,
+                columns: 10,
                 grid,
                 status: Status::Running,
                 difficulty,
@@ -162,26 +162,140 @@ impl Board {
     }
 
     pub fn get_columns_count(&self) -> u16 {
-        self.column
+        self.columns
     }
 
-    pub fn reveal_cell(&self, position: &Position) {
-        let cell = match self.grid.get(position.row) {
-            Some(row) => row.get(position.column),
-            None => None,
+    pub fn reveal_cell(&mut self, position: &Position) {
+        let cell = self.get_cell(position);
+
+        let Some(cell) = cell else {
+            return;
         };
 
-        // match cell {
-        //     Some(cell) => cell.reveal(),
-        //     None => {}
-        // }
-        //
+        if matches!(cell.state, CellState::Revealed | CellState::Flaged) {
+            return;
+        }
+
+        cell.reveal();
+        match cell.cell_type {
+            CellType::Bomb => self.status = Status::Loosed,
+            CellType::Numbered(_) => {}
+            CellType::Empty => {
+                if let Some(position) = self.get_cell_top_left_corner_position(position) {
+                    self.reveal_cell(&position);
+                }
+                if let Some(position) = self.get_cell_top_position(position) {
+                    self.reveal_cell(&position);
+                }
+                if let Some(position) = self.get_cell_top_right_corner_position(position) {
+                    self.reveal_cell(&position);
+                }
+                if let Some(position) = self.get_cell_left_position(position) {
+                    self.reveal_cell(&position);
+                }
+                if let Some(position) = self.get_cell_right_position(position) {
+                    self.reveal_cell(&position);
+                }
+                if let Some(position) = self.get_cell_bottom_right_corner_position(position) {
+                    self.reveal_cell(&position);
+                }
+                if let Some(position) = self.get_cell_bottom_position(position) {
+                    self.reveal_cell(&position);
+                }
+                if let Some(position) = self.get_cell_bottom_right_corner_position(position) {
+                    self.reveal_cell(&position);
+                }
+            }
+        };
+    }
+
+    pub fn get_cell(&mut self, position: &Position) -> Option<&mut Cell> {
+        match self.grid.get_mut(position.row as usize) {
+            Some(row) => row.get_mut(position.column as usize),
+            None => None,
+        }
+    }
+
+    pub fn get_cell_top_left_corner_position(&mut self, position: &Position) -> Option<Position> {
+        if position.row == 0 || self.columns == 0 {
+            return None;
+        }
+
+        Some(Position::new(position.row - 1, position.column))
+    }
+
+    pub fn get_cell_top_position(&mut self, position: &Position) -> Option<Position> {
+        if position.row == 0 {
+            return None;
+        }
+
+        Some(Position::new(position.row - 1, self.columns))
+    }
+
+    pub fn get_cell_top_right_corner_position(&mut self, position: &Position) -> Option<Position> {
+        if position.row == 0 || position.column == self.columns - 1 {
+            return None;
+        }
+
+        Some(Position::new(position.row - 1, position.column + 1))
+    }
+
+    pub fn get_cell_left_position(&mut self, position: &Position) -> Option<Position> {
+        if position.column == 0 {
+            return None;
+        }
+
+        Some(Position::new(position.row, position.column - 1))
+    }
+
+    pub fn get_cell_right_position(&mut self, position: &Position) -> Option<Position> {
+        if position.column == self.columns - 1 {
+            return None;
+        }
+
+        Some(Position::new(position.row, position.column + 1))
+    }
+
+    pub fn get_cell_bottom_left_corner_position(
+        &mut self,
+        position: &Position,
+    ) -> Option<Position> {
+        if position.row == self.rows - 1 || position.column == 0 {
+            return None;
+        }
+
+        Some(Position::new(position.row + 1, position.column - 1))
+    }
+
+    pub fn get_cell_bottom_position(&mut self, position: &Position) -> Option<Position> {
+        if position.row == self.rows {
+            return None;
+        }
+
+        Some(Position::new(position.row + 1, position.column))
+    }
+
+    pub fn get_cell_bottom_right_corner_position(
+        &mut self,
+        position: &Position,
+    ) -> Option<Position> {
+        if position.row == self.rows - 1 || position.column == self.columns - 1 {
+            return None;
+        }
+
+        Some(Position::new(position.row + 1, position.column + 1))
     }
 }
 
 pub struct Position {
-    pub row: usize,
-    pub column: usize,
+    pub row: u16,
+    pub column: u16,
+}
+
+impl Position {
+    pub fn new(row: u16, column: u16) -> Self {
+        Self { row, column }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
