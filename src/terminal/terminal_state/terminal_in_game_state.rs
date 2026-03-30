@@ -8,6 +8,7 @@ use ratatui::{
 
 use crate::{
     game::board::Board,
+    game::board::Position,
     terminal::{
         app::{App, AppState},
         ui::board_ui::BoardUi,
@@ -44,7 +45,12 @@ impl TerminalInGameState {
         }
     }
 
-    fn reveal_cell(&mut self) {}
+    fn reveal_cell(&mut self) {
+        self.board.reveal_cell(&Position::new(
+            self.cursor_position.row,
+            self.cursor_position.column,
+        ));
+    }
     fn move_cursor(&mut self, direction: MoveDirection) {
         match direction {
             MoveDirection::Up => {
@@ -113,6 +119,7 @@ impl TerminalInGameState {
                 KeyCode::Char('k') => app.in_game_state.move_cursor(MoveDirection::Up),
                 KeyCode::Char('l') => app.in_game_state.move_cursor(MoveDirection::Right),
                 KeyCode::Enter => app.in_game_state.reveal_cell(),
+                KeyCode::Char(' ') => app.in_game_state.reveal_cell(),
                 _ => {}
             },
             event::KeyEventKind::Repeat => (),
