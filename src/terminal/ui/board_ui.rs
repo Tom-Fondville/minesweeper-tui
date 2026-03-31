@@ -1,6 +1,6 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Layout, Rect},
+    layout::Rect,
     style::{Color, Style},
     widgets::{Block, Padding, Paragraph, Widget},
 };
@@ -24,6 +24,24 @@ impl<'a> BoardUi<'a> {
             board,
             cursor_position,
         }
+    }
+}
+
+impl<'a> BoardUi<'a> {
+    fn has_to_render_cursor(&self, row: usize, column: usize) -> bool {
+        if !self.board.is_game_running() {
+            return false;
+        }
+
+        if row as u16 != self.cursor_position.row {
+            return false;
+        }
+
+        if column as u16 != self.cursor_position.column {
+            return false;
+        }
+
+        true
     }
 }
 
@@ -65,14 +83,8 @@ impl<'a> Widget for BoardUi<'a> {
                     height: CELL_HEIGHT,
                 };
 
-                if row as u16 == self.cursor_position.row
-                    && column as u16 == self.cursor_position.column
-                {
-                    // render_cell(cell, true, col_chunks[column], buf);
-                    render_cell(cell, true, cell_area, buf);
-                } else {
-                    render_cell(cell, false, cell_area, buf);
-                }
+                let display_cursor = self.has_to_render_cursor(row, column);
+                render_cell(cell, display_cursor, cell_area, buf);
             }
         }
     }
@@ -80,8 +92,8 @@ impl<'a> Widget for BoardUi<'a> {
 
 fn render_cell(cell: &Cell, display_cursor: bool, area: Rect, buf: &mut Buffer) {
     let mut style = match cell.state {
-        CellState::Hiden => Style::default().bg(Color::Gray),
-        CellState::Flaged => Style::default().bg(Color::Gray),
+        CellState::Hidden => Style::default().bg(Color::Gray),
+        CellState::Flagged => Style::default().bg(Color::Gray).fg(Color::Black),
         CellState::Revealed => match cell.cell_type {
             CellType::Bomb => Style::default().bg(Color::Red).fg(Color::White),
             CellType::Numbered(_) => Style::default().bg(Color::DarkGray).fg(Color::Yellow),
@@ -96,8 +108,11 @@ fn render_cell(cell: &Cell, display_cursor: bool, area: Rect, buf: &mut Buffer) 
     let block = Block::new().style(style).padding(Padding::top(1));
 
     match cell.state {
-        CellState::Hiden => block.render(area, buf),
-        CellState::Flaged => block.render(area, buf),
+        CellState::Hidden => block.render(area, buf),
+        CellState::Flagged => Paragraph::new("F")
+            .block(block)
+            .centered()
+            .render(area, buf),
         CellState::Revealed => match cell.cell_type {
             CellType::Bomb => Paragraph::new("*")
                 .block(block)
