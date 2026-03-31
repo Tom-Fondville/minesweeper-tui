@@ -5,6 +5,10 @@ pub struct Board {
     grid: Vec<Vec<Cell>>,
     status: Status,
     difficulty: Difficulty,
+
+    cell_flagged_or_revealed_count: u32,
+    flagged_bomb_count: u16,
+    bomb_number: u16,
 }
 
 impl Board {
@@ -14,9 +18,21 @@ impl Board {
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_numbered(1),
+                Cell::new_bomb(),
+                Cell::new_numbered(2),
+                Cell::new_numbered(1),
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
+                Cell::new_empty(),
+            ],
+            vec![
+                Cell::new_empty(),
+                Cell::new_numbered(1),
+                Cell::new_numbered(2),
+                Cell::new_numbered(3),
+                Cell::new_bomb(),
+                Cell::new_numbered(2),
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
@@ -26,25 +42,25 @@ impl Board {
                 Cell::new_empty(),
                 Cell::new_numbered(1),
                 Cell::new_bomb(),
+                Cell::new_numbered(2),
+                Cell::new_numbered(2),
+                Cell::new_bomb(),
                 Cell::new_numbered(1),
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
             ],
             vec![
                 Cell::new_empty(),
-                Cell::new_empty(),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
                 Cell::new_numbered(1),
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
             ],
             vec![
                 Cell::new_empty(),
@@ -63,21 +79,9 @@ impl Board {
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
@@ -87,9 +91,9 @@ impl Board {
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
+                Cell::new_numbered(1),
+                Cell::new_bomb(),
+                Cell::new_numbered(1),
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
@@ -99,9 +103,9 @@ impl Board {
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
+                Cell::new_numbered(1),
                 Cell::new_empty(),
                 Cell::new_empty(),
                 Cell::new_empty(),
@@ -139,6 +143,9 @@ impl Board {
                 grid,
                 status: Status::Running,
                 difficulty,
+                cell_flagged_or_revealed_count: 0,
+                flagged_bomb_count: 0,
+                bomb_number: 5,
             },
             Difficulty::Medium => todo!(),
             Difficulty::Hard => todo!(),
@@ -153,6 +160,10 @@ impl Board {
         &self.difficulty
     }
 
+    pub fn get_status(&self) -> &Status {
+        &self.status
+    }
+
     pub fn get_grid(&self) -> &Vec<Vec<Cell>> {
         &self.grid
     }
@@ -165,14 +176,52 @@ impl Board {
         self.columns
     }
 
-    pub fn reveal_cell(&mut self, position: &Position) {
+    pub fn is_game_running(&self) -> bool {
+        matches!(self.status, Status::Running)
+    }
+
+    pub fn toggle_flag(&mut self, position: &Position) {
+        if !self.is_game_running() {
+            return;
+        };
+
         let cell = self.get_cell(position);
 
         let Some(cell) = cell else {
             return;
         };
 
-        if matches!(cell.state, CellState::Revealed | CellState::Flaged) {
+        match cell.state {
+            CellState::Hidden => {
+                cell.state = CellState::Flagged;
+                if let CellType::Bomb = cell.cell_type {
+                    self.flagged_bomb_count += 1;
+                }
+                self.cell_flagged_or_revealed_count += 1;
+            }
+            CellState::Flagged => {
+                cell.state = CellState::Hidden;
+                if let CellType::Bomb = cell.cell_type {
+                    self.flagged_bomb_count -= 1;
+                }
+                self.cell_flagged_or_revealed_count -= 1;
+            }
+            CellState::Revealed => {}
+        }
+    }
+
+    pub fn reveal_cell(&mut self, position: &Position) {
+        if !self.is_game_running() {
+            return;
+        };
+
+        let cell = self.get_cell(position);
+
+        let Some(cell) = cell else {
+            return;
+        };
+
+        if matches!(cell.state, CellState::Revealed | CellState::Flagged) {
             return;
         }
 
@@ -207,6 +256,11 @@ impl Board {
                 }
             }
         };
+
+        self.cell_flagged_or_revealed_count += 1;
+        if self.all_cell_are_revealed_or_flagged() && self.all_bomb_are_flagged() {
+            self.status = Status::Won
+        }
     }
 
     pub fn get_cell(&mut self, position: &Position) -> Option<&mut Cell> {
@@ -285,6 +339,14 @@ impl Board {
 
         Some(Position::new(position.row + 1, position.column + 1))
     }
+
+    fn all_cell_are_revealed_or_flagged(&self) -> bool {
+        self.cell_flagged_or_revealed_count == (self.rows * self.columns) as u32
+    }
+
+    fn all_bomb_are_flagged(&self) -> bool {
+        self.bomb_number == self.flagged_bomb_count
+    }
 }
 
 pub struct Position {
@@ -308,25 +370,25 @@ impl Cell {
     pub fn new_bomb() -> Self {
         Self {
             cell_type: CellType::Bomb,
-            state: CellState::Hiden,
+            state: CellState::Hidden,
         }
     }
     pub fn new_numbered(number: u8) -> Self {
         Self {
             cell_type: CellType::Numbered(number),
-            state: CellState::Hiden,
+            state: CellState::Hidden,
         }
     }
 
     pub fn new_empty() -> Self {
         Self {
             cell_type: CellType::Empty,
-            state: CellState::Hiden,
+            state: CellState::Hidden,
         }
     }
 
     pub fn reveal(&mut self) {
-        if let CellState::Hiden = self.state {
+        if let CellState::Hidden = self.state {
             self.state = CellState::Revealed;
         }
     }
@@ -334,8 +396,8 @@ impl Cell {
 
 #[derive(Debug, Clone, Copy)]
 pub enum CellState {
-    Hiden,
-    Flaged,
+    Hidden,
+    Flagged,
     Revealed,
 }
 
@@ -351,6 +413,15 @@ pub enum Status {
     Running,
     Loosed,
     Won,
+}
+impl Status {
+    pub fn as_string(&self) -> String {
+        match self {
+            Status::Running => "running".to_string(),
+            Status::Loosed => "loosed".to_string(),
+            Status::Won => "won".to_string(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]

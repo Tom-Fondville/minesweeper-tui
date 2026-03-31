@@ -51,7 +51,19 @@ impl TerminalInGameState {
             self.cursor_position.column,
         ));
     }
+
+    fn toggle_flag(&mut self) {
+        self.board.toggle_flag(&Position::new(
+            self.cursor_position.row,
+            self.cursor_position.column,
+        ));
+    }
+
     fn move_cursor(&mut self, direction: MoveDirection) {
+        if !self.board.is_game_running() {
+            return;
+        }
+
         match direction {
             MoveDirection::Up => {
                 let new_row = u16::saturating_sub(self.cursor_position.row, 1);
@@ -93,8 +105,9 @@ impl TerminalInGameState {
             let footer = chunks[2];
 
             let title = Line::from(format!(
-                " {} ",
-                self.board.get_difficulty().as_string().bold()
+                " {} - {}",
+                self.board.get_difficulty().as_string().bold(),
+                self.board.get_status().as_string(),
             ))
             .centered();
             frame.render_widget(title, header);
@@ -118,6 +131,7 @@ impl TerminalInGameState {
                 KeyCode::Char('j') => app.in_game_state.move_cursor(MoveDirection::Down),
                 KeyCode::Char('k') => app.in_game_state.move_cursor(MoveDirection::Up),
                 KeyCode::Char('l') => app.in_game_state.move_cursor(MoveDirection::Right),
+                KeyCode::Char('f') => app.in_game_state.toggle_flag(),
                 KeyCode::Enter => app.in_game_state.reveal_cell(),
                 KeyCode::Char(' ') => app.in_game_state.reveal_cell(),
                 _ => {}
