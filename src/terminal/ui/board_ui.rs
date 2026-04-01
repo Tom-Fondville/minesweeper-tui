@@ -6,7 +6,7 @@ use ratatui::{
 };
 
 use crate::{
-    game::board::{Board, Cell, CellState, CellType},
+    game::board::{Board, Cell, CellState, CellType, Status},
     terminal::terminal_state::terminal_in_game_state::CursorPositon,
 };
 
@@ -84,17 +84,36 @@ impl<'a> Widget for BoardUi<'a> {
                 };
 
                 let display_cursor = self.has_to_render_cursor(row, column);
-                render_cell(cell, display_cursor, cell_area, buf);
+                render_cell(
+                    cell,
+                    display_cursor,
+                    self.board.get_status(),
+                    cell_area,
+                    buf,
+                );
             }
         }
     }
 }
 
-fn render_cell(cell: &Cell, display_cursor: bool, area: Rect, buf: &mut Buffer) {
-    let mut style = match cell.state {
-        CellState::Hidden => Style::default().bg(Color::Gray),
-        CellState::Flagged => Style::default().bg(Color::Gray).fg(Color::Black),
-        CellState::Revealed => match cell.cell_type {
+fn render_cell(
+    cell: &Cell,
+    display_cursor: bool,
+    board_status: &Status,
+    area: Rect,
+    buf: &mut Buffer,
+) {
+    let mut style = match board_status {
+        Status::Running => match cell.state {
+            CellState::Hidden => Style::default().bg(Color::Gray),
+            CellState::Flagged => Style::default().bg(Color::Gray).fg(Color::Black),
+            CellState::Revealed => match cell.cell_type {
+                CellType::Bomb => Style::default().bg(Color::Red).fg(Color::White),
+                CellType::Numbered(_) => Style::default().bg(Color::DarkGray).fg(Color::Yellow),
+                CellType::Empty => Style::default().bg(Color::Black),
+            },
+        },
+        _ => match cell.cell_type {
             CellType::Bomb => Style::default().bg(Color::Red).fg(Color::White),
             CellType::Numbered(_) => Style::default().bg(Color::DarkGray).fg(Color::Yellow),
             CellType::Empty => Style::default().bg(Color::Black),
@@ -107,22 +126,47 @@ fn render_cell(cell: &Cell, display_cursor: bool, area: Rect, buf: &mut Buffer) 
 
     let block = Block::new().style(style).padding(Padding::top(1));
 
-    match cell.state {
-        CellState::Hidden => block.render(area, buf),
-        CellState::Flagged => Paragraph::new("F")
-            .block(block)
-            .centered()
-            .render(area, buf),
-        CellState::Revealed => match cell.cell_type {
-            CellType::Bomb => Paragraph::new("*")
+    match board_status {
+        Status::Running => match cell.state {
+            CellState::Hidden => block.render(area, buf),
+            CellState::Flagged => Paragraph::new("F")
                 .block(block)
                 .centered()
                 .render(area, buf),
-            CellType::Numbered(number) => Paragraph::new(number.to_string())
-                .block(block)
-                .centered()
-                .render(area, buf),
-            CellType::Empty => block.render(area, buf),
+            CellState::Revealed => match cell.cell_type {
+                CellType::Bomb => Paragraph::new("*")
+                    .block(block)
+                    .centered()
+                    .render(area, buf),
+                CellType::Numbered(number) => Paragraph::new(number.to_string())
+                    .block(block)
+                    .centered()
+                    .render(area, buf),
+                CellType::Empty => block.render(area, buf),
+            },
+        },
+        _ => match cell.state {
+            CellState::Flagged => match cell.cell_type {
+                CellType::Numbered(number) => Paragraph::new(format!("{}   F", number))
+                    .block(block)
+                    .centered()
+                    .render(area, buf),
+                _ => Paragraph::new("F")
+                    .block(block)
+                    .centered()
+                    .render(area, buf),
+            },
+            _ => match cell.cell_type {
+                CellType::Bomb => Paragraph::new("*")
+                    .block(block)
+                    .centered()
+                    .render(area, buf),
+                CellType::Numbered(number) => Paragraph::new(number.to_string())
+                    .block(block)
+                    .centered()
+                    .render(area, buf),
+                CellType::Empty => block.render(area, buf),
+            },
         },
     }
 }

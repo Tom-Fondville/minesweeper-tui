@@ -1,158 +1,33 @@
+use std::collections::HashSet;
+
+use rand::RngExt;
+
 #[derive(Debug, Clone)]
 pub struct Board {
     rows: u16,
     columns: u16,
+    bomb_number: u16,
     grid: Vec<Vec<Cell>>,
     status: Status,
     difficulty: Difficulty,
 
+    first_cell_has_been_revealed: bool,
     cell_flagged_or_revealed_count: u32,
     flagged_bomb_count: u16,
-    bomb_number: u16,
 }
 
 impl Board {
     pub fn new(difficulty: Difficulty) -> Self {
-        let grid: Vec<Vec<Cell>> = vec![
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_numbered(1),
-                Cell::new_bomb(),
-                Cell::new_numbered(2),
-                Cell::new_numbered(1),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_numbered(1),
-                Cell::new_numbered(2),
-                Cell::new_numbered(3),
-                Cell::new_bomb(),
-                Cell::new_numbered(2),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_numbered(1),
-                Cell::new_bomb(),
-                Cell::new_numbered(2),
-                Cell::new_numbered(2),
-                Cell::new_bomb(),
-                Cell::new_numbered(1),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_numbered(1),
-                Cell::new_bomb(),
-                Cell::new_numbered(1),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_numbered(1),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-            vec![
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-                Cell::new_empty(),
-            ],
-        ];
-
-        match difficulty {
-            Difficulty::Easy => Self {
-                rows: 10,
-                columns: 10,
-                grid,
-                status: Status::Running,
-                difficulty,
-                cell_flagged_or_revealed_count: 0,
-                flagged_bomb_count: 0,
-                bomb_number: 5,
-            },
-            Difficulty::Medium => todo!(),
-            Difficulty::Hard => todo!(),
-            Difficulty::Custom {
-                rows_number,
-                column_number,
-            } => todo!(),
+        Self {
+            rows: difficulty.get_row_number(),
+            columns: difficulty.get_column_number(),
+            bomb_number: difficulty.get_bomb_number(),
+            grid: Self::generate_empty_grid(&difficulty),
+            status: Status::Running,
+            difficulty,
+            first_cell_has_been_revealed: false,
+            cell_flagged_or_revealed_count: 0,
+            flagged_bomb_count: 0,
         }
     }
 
@@ -185,7 +60,7 @@ impl Board {
             return;
         };
 
-        let cell = self.get_cell(position);
+        let cell = self.get_cell_mut(position);
 
         let Some(cell) = cell else {
             return;
@@ -215,7 +90,11 @@ impl Board {
             return;
         };
 
-        let cell = self.get_cell(position);
+        if !self.first_cell_has_been_revealed {
+            Self::fill_grid_with_bomb(self, position);
+        }
+
+        let cell = self.get_cell_mut(position);
 
         let Some(cell) = cell else {
             return;
@@ -263,14 +142,21 @@ impl Board {
         }
     }
 
-    pub fn get_cell(&mut self, position: &Position) -> Option<&mut Cell> {
+    pub fn get_cell_mut(&mut self, position: &Position) -> Option<&mut Cell> {
         match self.grid.get_mut(position.row as usize) {
             Some(row) => row.get_mut(position.column as usize),
             None => None,
         }
     }
 
-    pub fn get_cell_top_left_corner_position(&mut self, position: &Position) -> Option<Position> {
+    pub fn get_cell(&self, position: &Position) -> Option<&Cell> {
+        match self.grid.get(position.row as usize) {
+            Some(row) => row.get(position.column as usize),
+            None => None,
+        }
+    }
+
+    pub fn get_cell_top_left_corner_position(&self, position: &Position) -> Option<Position> {
         if position.row == 0 || self.columns == 0 {
             return None;
         }
@@ -278,7 +164,7 @@ impl Board {
         Some(Position::new(position.row - 1, position.column))
     }
 
-    pub fn get_cell_top_position(&mut self, position: &Position) -> Option<Position> {
+    pub fn get_cell_top_position(&self, position: &Position) -> Option<Position> {
         if position.row == 0 {
             return None;
         }
@@ -286,7 +172,7 @@ impl Board {
         Some(Position::new(position.row - 1, self.columns))
     }
 
-    pub fn get_cell_top_right_corner_position(&mut self, position: &Position) -> Option<Position> {
+    pub fn get_cell_top_right_corner_position(&self, position: &Position) -> Option<Position> {
         if position.row == 0 || position.column == self.columns - 1 {
             return None;
         }
@@ -294,7 +180,7 @@ impl Board {
         Some(Position::new(position.row - 1, position.column + 1))
     }
 
-    pub fn get_cell_left_position(&mut self, position: &Position) -> Option<Position> {
+    pub fn get_cell_left_position(&self, position: &Position) -> Option<Position> {
         if position.column == 0 {
             return None;
         }
@@ -302,7 +188,7 @@ impl Board {
         Some(Position::new(position.row, position.column - 1))
     }
 
-    pub fn get_cell_right_position(&mut self, position: &Position) -> Option<Position> {
+    pub fn get_cell_right_position(&self, position: &Position) -> Option<Position> {
         if position.column == self.columns - 1 {
             return None;
         }
@@ -310,10 +196,7 @@ impl Board {
         Some(Position::new(position.row, position.column + 1))
     }
 
-    pub fn get_cell_bottom_left_corner_position(
-        &mut self,
-        position: &Position,
-    ) -> Option<Position> {
+    pub fn get_cell_bottom_left_corner_position(&self, position: &Position) -> Option<Position> {
         if position.row == self.rows - 1 || position.column == 0 {
             return None;
         }
@@ -321,7 +204,7 @@ impl Board {
         Some(Position::new(position.row + 1, position.column - 1))
     }
 
-    pub fn get_cell_bottom_position(&mut self, position: &Position) -> Option<Position> {
+    pub fn get_cell_bottom_position(&self, position: &Position) -> Option<Position> {
         if position.row == self.rows {
             return None;
         }
@@ -329,15 +212,57 @@ impl Board {
         Some(Position::new(position.row + 1, position.column))
     }
 
-    pub fn get_cell_bottom_right_corner_position(
-        &mut self,
-        position: &Position,
-    ) -> Option<Position> {
+    pub fn get_cell_bottom_right_corner_position(&self, position: &Position) -> Option<Position> {
         if position.row == self.rows - 1 || position.column == self.columns - 1 {
             return None;
         }
 
         Some(Position::new(position.row + 1, position.column + 1))
+    }
+
+    fn get_cell_neighbors(&self, position: &Position) -> Vec<&Cell> {
+        let mut neighbors = Vec::new();
+        if let Some(position) = self.get_cell_top_left_corner_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        if let Some(position) = self.get_cell_top_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        if let Some(position) = self.get_cell_top_right_corner_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        if let Some(position) = self.get_cell_left_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        if let Some(position) = self.get_cell_right_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        if let Some(position) = self.get_cell_bottom_right_corner_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        if let Some(position) = self.get_cell_bottom_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        if let Some(position) = self.get_cell_bottom_right_corner_position(position)
+            && let Some(cell) = self.get_cell(&position)
+        {
+            neighbors.push(cell);
+        }
+        neighbors
     }
 
     fn all_cell_are_revealed_or_flagged(&self) -> bool {
@@ -347,8 +272,90 @@ impl Board {
     fn all_bomb_are_flagged(&self) -> bool {
         self.bomb_number == self.flagged_bomb_count
     }
+
+    fn generate_empty_grid(difficulty: &Difficulty) -> Vec<Vec<Cell>> {
+        let mut grid = Vec::new();
+        for _ in 0..difficulty.get_row_number() {
+            let mut row = Vec::new();
+            for _ in 0..difficulty.get_column_number() {
+                row.push(Cell::new_empty());
+            }
+            grid.push(row);
+        }
+        grid
+    }
+
+    pub fn fill_grid_with_bomb(&mut self, first_safe_cell_position: &Position) {
+        self.first_cell_has_been_revealed = true;
+        let mut bombs_position: HashSet<Position> = HashSet::new();
+        let mut excluded_positions: HashSet<Position> =
+            HashSet::from([first_safe_cell_position.clone()]);
+
+        for _ in 0..self.difficulty.get_bomb_number() {
+            let bomb_position =
+                Self::generate_random_position(&self.difficulty, &excluded_positions);
+            bombs_position.insert(bomb_position.clone());
+            excluded_positions.insert(bomb_position.clone());
+        }
+
+        for bomb_possition in bombs_position {
+            if let Some(cell) = self.get_cell_mut(&bomb_possition) {
+                cell.cell_type = CellType::Bomb
+            }
+        }
+
+        for row in 0..self.difficulty.get_row_number() {
+            for column in 0..self.difficulty.get_column_number() {
+                let position = Position::new(row, column);
+                let Some(cell) = self.get_cell(&position) else {
+                    continue;
+                };
+
+                let CellType::Empty = cell.cell_type else {
+                    continue;
+                };
+
+                let neighbors = self.get_cell_neighbors(&position);
+                let number = Self::compute_cell_number(&neighbors);
+
+                let Some(cell) = self.get_cell_mut(&position) else {
+                    continue;
+                };
+                match number {
+                    0 => cell.cell_type = CellType::Empty,
+                    _ => cell.cell_type = CellType::Numbered(number),
+                }
+            }
+        }
+    }
+
+    fn compute_cell_number(neighbors: &Vec<&Cell>) -> u8 {
+        let mut number = 0;
+        for neighbor in neighbors {
+            if let CellType::Bomb = neighbor.cell_type {
+                number += 1;
+            }
+        }
+
+        number
+    }
+
+    fn generate_random_position(
+        difficulty: &Difficulty,
+        excluded_position: &HashSet<Position>,
+    ) -> Position {
+        loop {
+            let row = rand::rng().random_range(0..difficulty.get_row_number());
+            let column = rand::rng().random_range(0..difficulty.get_column_number());
+            let position = Position::new(row, column);
+            if !excluded_position.contains(&position) {
+                break position;
+            }
+        }
+    }
 }
 
+#[derive(PartialEq, Eq, Hash, Clone)]
 pub struct Position {
     pub row: u16,
     pub column: u16,
@@ -417,7 +424,7 @@ pub enum Status {
 impl Status {
     pub fn as_string(&self) -> String {
         match self {
-            Status::Running => "running".to_string(),
+            Status::Running => "".to_string(),
             Status::Loosed => "loosed".to_string(),
             Status::Won => "won".to_string(),
         }
@@ -430,8 +437,9 @@ pub enum Difficulty {
     Medium,
     Hard,
     Custom {
-        rows_number: u64,
-        column_number: u64,
+        rows_number: u16,
+        column_number: u16,
+        bomb_number: u16,
     },
 }
 
@@ -444,7 +452,47 @@ impl Difficulty {
             Difficulty::Custom {
                 rows_number,
                 column_number,
+                bomb_number: _,
             } => format!("custom: {}x{}", rows_number, column_number),
+        }
+    }
+
+    pub fn get_row_number(&self) -> u16 {
+        match self {
+            Difficulty::Easy => 9,
+            Difficulty::Medium => 16,
+            Difficulty::Hard => 30,
+            Difficulty::Custom {
+                rows_number,
+                column_number: _,
+                bomb_number: _,
+            } => rows_number.clone(),
+        }
+    }
+
+    pub fn get_column_number(&self) -> u16 {
+        match self {
+            Difficulty::Easy => 9,
+            Difficulty::Medium => 16,
+            Difficulty::Hard => 16,
+            Difficulty::Custom {
+                rows_number,
+                column_number: _,
+                bomb_number: _,
+            } => rows_number.clone(),
+        }
+    }
+
+    pub fn get_bomb_number(&self) -> u16 {
+        match self {
+            Difficulty::Easy => 10,
+            Difficulty::Medium => 40,
+            Difficulty::Hard => 99,
+            Difficulty::Custom {
+                rows_number,
+                column_number: _,
+                bomb_number: _,
+            } => rows_number.clone(),
         }
     }
 }
