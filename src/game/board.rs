@@ -51,6 +51,14 @@ impl Board {
         self.columns
     }
 
+    pub fn get_bomb_number(&self) -> u16 {
+        self.bomb_number
+    }
+
+    pub fn get_flagged_bomb_count(&self) -> u16 {
+        self.flagged_bomb_count
+    }
+
     pub fn is_game_running(&self) -> bool {
         matches!(self.status, Status::Running)
     }
@@ -86,12 +94,14 @@ impl Board {
     }
 
     pub fn reveal_cell(&mut self, position: &Position) {
+        log::info!("revealing cell");
         if !self.is_game_running() {
             return;
         };
 
         if !self.first_cell_has_been_revealed {
             Self::fill_grid_with_bomb(self, position);
+            self.first_cell_has_been_revealed = true;
         }
 
         let cell = self.get_cell_mut(position);
@@ -109,29 +119,9 @@ impl Board {
             CellType::Bomb => self.status = Status::Loosed,
             CellType::Numbered(_) => {}
             CellType::Empty => {
-                if let Some(position) = self.get_cell_top_left_corner_position(position) {
-                    self.reveal_cell(&position);
-                }
-                if let Some(position) = self.get_cell_top_position(position) {
-                    self.reveal_cell(&position);
-                }
-                if let Some(position) = self.get_cell_top_right_corner_position(position) {
-                    self.reveal_cell(&position);
-                }
-                if let Some(position) = self.get_cell_left_position(position) {
-                    self.reveal_cell(&position);
-                }
-                if let Some(position) = self.get_cell_right_position(position) {
-                    self.reveal_cell(&position);
-                }
-                if let Some(position) = self.get_cell_bottom_right_corner_position(position) {
-                    self.reveal_cell(&position);
-                }
-                if let Some(position) = self.get_cell_bottom_position(position) {
-                    self.reveal_cell(&position);
-                }
-                if let Some(position) = self.get_cell_bottom_right_corner_position(position) {
-                    self.reveal_cell(&position);
+                let neighbors = self.get_cell_neighbors_positions(position);
+                for neighbor in neighbors {
+                    self.reveal_cell(&neighbor);
                 }
             }
         };
@@ -157,11 +147,11 @@ impl Board {
     }
 
     pub fn get_cell_top_left_corner_position(&self, position: &Position) -> Option<Position> {
-        if position.row == 0 || self.columns == 0 {
+        if position.row == 0 || position.column == 0 {
             return None;
         }
 
-        Some(Position::new(position.row - 1, position.column))
+        Some(Position::new(position.row - 1, position.column - 1))
     }
 
     pub fn get_cell_top_position(&self, position: &Position) -> Option<Position> {
@@ -169,7 +159,7 @@ impl Board {
             return None;
         }
 
-        Some(Position::new(position.row - 1, self.columns))
+        Some(Position::new(position.row - 1, position.column))
     }
 
     pub fn get_cell_top_right_corner_position(&self, position: &Position) -> Option<Position> {
@@ -220,48 +210,30 @@ impl Board {
         Some(Position::new(position.row + 1, position.column + 1))
     }
 
+    fn get_cell_neighbors_positions(&self, position: &Position) -> Vec<Position> {
+        vec![
+            self.get_cell_top_left_corner_position(position),
+            self.get_cell_top_position(position),
+            self.get_cell_top_right_corner_position(position),
+            self.get_cell_left_position(position),
+            self.get_cell_right_position(position),
+            self.get_cell_bottom_left_corner_position(position),
+            self.get_cell_bottom_position(position),
+            self.get_cell_bottom_right_corner_position(position),
+        ]
+        .into_iter()
+        .flatten()
+        .collect()
+    }
+
     fn get_cell_neighbors(&self, position: &Position) -> Vec<&Cell> {
         let mut neighbors = Vec::new();
-        if let Some(position) = self.get_cell_top_left_corner_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
+        for position in self.get_cell_neighbors_positions(position) {
+            if let Some(cell) = self.get_cell(&position) {
+                neighbors.push(cell);
+            }
         }
-        if let Some(position) = self.get_cell_top_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
-        }
-        if let Some(position) = self.get_cell_top_right_corner_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
-        }
-        if let Some(position) = self.get_cell_left_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
-        }
-        if let Some(position) = self.get_cell_right_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
-        }
-        if let Some(position) = self.get_cell_bottom_right_corner_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
-        }
-        if let Some(position) = self.get_cell_bottom_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
-        }
-        if let Some(position) = self.get_cell_bottom_right_corner_position(position)
-            && let Some(cell) = self.get_cell(&position)
-        {
-            neighbors.push(cell);
-        }
+
         neighbors
     }
 
@@ -286,7 +258,6 @@ impl Board {
     }
 
     pub fn fill_grid_with_bomb(&mut self, first_safe_cell_position: &Position) {
-        self.first_cell_has_been_revealed = true;
         let mut bombs_position: HashSet<Position> = HashSet::new();
         let mut excluded_positions: HashSet<Position> =
             HashSet::from([first_safe_cell_position.clone()]);
@@ -297,6 +268,7 @@ impl Board {
             bombs_position.insert(bomb_position.clone());
             excluded_positions.insert(bomb_position.clone());
         }
+        log::warn!("bomb_position: {:?}", bombs_position);
 
         for bomb_possition in bombs_position {
             if let Some(cell) = self.get_cell_mut(&bomb_possition) {
@@ -355,7 +327,7 @@ impl Board {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Clone)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct Position {
     pub row: u16,
     pub column: u16,

@@ -116,8 +116,11 @@ impl TerminalInGameState {
 
             let footer_text = "minesweeper-tui ".italic();
             let coords_text = Span::from(format!(
-                "{}, {}",
-                self.cursor_position.row, self.cursor_position.column
+                "{}, {} - bomb number {} bomb flagged {}",
+                self.cursor_position.row,
+                self.cursor_position.column,
+                self.board.get_bomb_number(),
+                self.board.get_flagged_bomb_count()
             ));
             frame.render_widget(Line::from(vec![footer_text, coords_text]), footer);
         });
