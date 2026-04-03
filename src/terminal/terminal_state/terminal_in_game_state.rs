@@ -7,8 +7,10 @@ use ratatui::{
 };
 
 use crate::{
-    game::board::Board,
-    game::board::Position,
+    game::{
+        Game,
+        board::{Board, Difficulty, Position},
+    },
     terminal::{
         app::{App, AppState},
         ui::board_ui::BoardUi,
@@ -30,37 +32,50 @@ impl CursorPositon {
     pub fn new(row: u16, column: u16) -> Self {
         Self { row, column }
     }
+
+    pub fn defualt() -> Self {
+        Self { row: 0, column: 0 }
+    }
 }
 
 pub struct TerminalInGameState {
-    board: Board,
+    game: Game,
     cursor_position: CursorPositon,
 }
 
 impl TerminalInGameState {
-    pub fn new(board: Board) -> Self {
+    pub fn new(game: Game) -> Self {
         Self {
-            board,
-            cursor_position: CursorPositon::new(0, 0),
+            game,
+            cursor_position: CursorPositon::defualt(),
         }
     }
 
+    pub fn restart(&mut self) {
+        self.game.restart();
+        self.cursor_position = CursorPositon::defualt()
+    }
+
+    pub fn change_difficulty(&mut self, difficulty: Difficulty) {
+        self.game.board = Board::new(difficulty)
+    }
+
     fn reveal_cell(&mut self) {
-        self.board.reveal_cell(&Position::new(
+        self.game.board.reveal_cell(&Position::new(
             self.cursor_position.row,
             self.cursor_position.column,
         ));
     }
 
     fn toggle_flag(&mut self) {
-        self.board.toggle_flag(&Position::new(
+        self.game.board.toggle_flag(&Position::new(
             self.cursor_position.row,
             self.cursor_position.column,
         ));
     }
 
     fn move_cursor(&mut self, direction: MoveDirection) {
-        if !self.board.is_game_running() {
+        if !self.game.board.is_game_running() {
             return;
         }
 
@@ -71,14 +86,14 @@ impl TerminalInGameState {
             }
             MoveDirection::Down => {
                 let new_row = u16::saturating_add(self.cursor_position.row, 1);
-                if new_row > self.board.get_rows_count() - 1 {
+                if new_row > self.game.board.get_rows_count() - 1 {
                     return;
                 }
                 self.cursor_position = CursorPositon::new(new_row, self.cursor_position.column);
             }
             MoveDirection::Right => {
                 let new_column = u16::saturating_add(self.cursor_position.column, 1);
-                if new_column > self.board.get_columns_count() - 1 {
+                if new_column > self.game.board.get_columns_count() - 1 {
                     return;
                 }
                 self.cursor_position = CursorPositon::new(self.cursor_position.row, new_column);
@@ -106,21 +121,21 @@ impl TerminalInGameState {
 
             let title = Line::from(format!(
                 " {} - {}",
-                self.board.get_difficulty().as_string().bold(),
-                self.board.get_status().as_string(),
+                self.game.board.get_difficulty().as_string().bold(),
+                self.game.board.get_status().as_string(),
             ))
             .centered();
             frame.render_widget(title, header);
 
-            frame.render_widget(BoardUi::new(&self.board, &self.cursor_position), body);
+            frame.render_widget(BoardUi::new(&self.game.board, &self.cursor_position), body);
 
             let footer_text = "minesweeper-tui ".italic();
             let coords_text = Span::from(format!(
-                "{}, {} - bomb number {} bomb flagged {}",
+                "{}, {} - bomb number {} flags {}",
                 self.cursor_position.row,
                 self.cursor_position.column,
-                self.board.get_bomb_number(),
-                self.board.get_flagged_bomb_count()
+                self.game.board.get_bomb_number(),
+                self.game.board.get_flags_count()
             ));
             frame.render_widget(Line::from(vec![footer_text, coords_text]), footer);
         });
@@ -135,6 +150,7 @@ impl TerminalInGameState {
                 KeyCode::Char('k') => app.in_game_state.move_cursor(MoveDirection::Up),
                 KeyCode::Char('l') => app.in_game_state.move_cursor(MoveDirection::Right),
                 KeyCode::Char('f') => app.in_game_state.toggle_flag(),
+                KeyCode::Char('r') => app.in_game_state.restart(),
                 KeyCode::Enter => app.in_game_state.reveal_cell(),
                 KeyCode::Char(' ') => app.in_game_state.reveal_cell(),
                 _ => {}

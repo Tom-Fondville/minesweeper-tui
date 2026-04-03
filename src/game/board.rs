@@ -12,22 +12,24 @@ pub struct Board {
     difficulty: Difficulty,
 
     first_cell_has_been_revealed: bool,
-    cell_flagged_or_revealed_count: u32,
-    flagged_bomb_count: u16,
+    remaining_cells_count: u32,
+    flags_count: u16,
 }
 
 impl Board {
     pub fn new(difficulty: Difficulty) -> Self {
+        let rows = difficulty.get_row_number();
+        let columns = difficulty.get_column_number();
         Self {
-            rows: difficulty.get_row_number(),
-            columns: difficulty.get_column_number(),
+            rows,
+            columns,
             bomb_number: difficulty.get_bomb_number(),
             grid: Self::generate_empty_grid(&difficulty),
             status: Status::Running,
             difficulty,
             first_cell_has_been_revealed: false,
-            cell_flagged_or_revealed_count: 0,
-            flagged_bomb_count: 0,
+            remaining_cells_count: (rows * columns) as u32,
+            flags_count: 0,
         }
     }
 
@@ -55,8 +57,8 @@ impl Board {
         self.bomb_number
     }
 
-    pub fn get_flagged_bomb_count(&self) -> u16 {
-        self.flagged_bomb_count
+    pub fn get_flags_count(&self) -> u16 {
+        self.flags_count
     }
 
     pub fn is_game_running(&self) -> bool {
@@ -77,24 +79,17 @@ impl Board {
         match cell.state {
             CellState::Hidden => {
                 cell.state = CellState::Flagged;
-                if let CellType::Bomb = cell.cell_type {
-                    self.flagged_bomb_count += 1;
-                }
-                self.cell_flagged_or_revealed_count += 1;
+                self.flags_count += 1;
             }
             CellState::Flagged => {
                 cell.state = CellState::Hidden;
-                if let CellType::Bomb = cell.cell_type {
-                    self.flagged_bomb_count -= 1;
-                }
-                self.cell_flagged_or_revealed_count -= 1;
+                self.flags_count -= 1;
             }
             CellState::Revealed => {}
         }
     }
 
     pub fn reveal_cell(&mut self, position: &Position) {
-        log::info!("revealing cell");
         if !self.is_game_running() {
             return;
         };
@@ -110,9 +105,55 @@ impl Board {
             return;
         };
 
+        if matches!(cell.state, CellState::Revealed)
+            && matches!(cell.cell_type, CellType::Numbered(_))
+        {
+            self.chord(position);
+            return;
+        }
+
         if matches!(cell.state, CellState::Revealed | CellState::Flagged) {
             return;
         }
+
+        match cell.cell_type {
+            CellType::Bomb => self.status = Status::Loosed,
+            CellType::Numbered(_) => {
+                cell.reveal();
+                self.remaining_cells_count -= 1;
+            }
+            CellType::Empty => {
+                self.reveal_empty_cell(position);
+            }
+        };
+
+        if self.remaining_cells_count == self.bomb_number as u32 {
+            self.status = Status::Won
+        }
+    }
+
+    fn chord(&mut self, position: &Position) {
+        let cell = self.get_cell(position);
+        let Some(cell) = cell else {
+            return;
+        };
+
+        if !cell.can_chord(self, position) {
+            return;
+        }
+
+        self.reveal_neighbors(position);
+    }
+
+    fn reveal_empty_cell(&mut self, position: &Position) {
+        let cell = self.get_cell_mut(position);
+        let Some(cell) = cell else {
+            return;
+        };
+
+        let CellState::Hidden = cell.state else {
+            return;
+        };
 
         cell.reveal();
         match cell.cell_type {
@@ -126,10 +167,7 @@ impl Board {
             }
         };
 
-        self.cell_flagged_or_revealed_count += 1;
-        if self.all_cell_are_revealed_or_flagged() && self.all_bomb_are_flagged() {
-            self.status = Status::Won
-        }
+        self.remaining_cells_count -= 1;
     }
 
     pub fn get_cell_mut(&mut self, position: &Position) -> Option<&mut Cell> {
@@ -226,6 +264,16 @@ impl Board {
         .collect()
     }
 
+    fn reveal_neighbors(&mut self, position: &Position) {
+        let positions = self.get_cell_neighbors_positions(position);
+        for position in positions {
+            if let Some(cell) = self.get_cell_mut(&position) {
+                cell.reveal();
+                self.remaining_cells_count -= 1;
+            }
+        }
+    }
+
     fn get_cell_neighbors(&self, position: &Position) -> Vec<&Cell> {
         let mut neighbors = Vec::new();
         for position in self.get_cell_neighbors_positions(position) {
@@ -233,16 +281,7 @@ impl Board {
                 neighbors.push(cell);
             }
         }
-
         neighbors
-    }
-
-    fn all_cell_are_revealed_or_flagged(&self) -> bool {
-        self.cell_flagged_or_revealed_count == (self.rows * self.columns) as u32
-    }
-
-    fn all_bomb_are_flagged(&self) -> bool {
-        self.bomb_number == self.flagged_bomb_count
     }
 
     fn generate_empty_grid(difficulty: &Difficulty) -> Vec<Vec<Cell>> {
@@ -352,6 +391,7 @@ impl Cell {
             state: CellState::Hidden,
         }
     }
+
     pub fn new_numbered(number: u8) -> Self {
         Self {
             cell_type: CellType::Numbered(number),
@@ -364,6 +404,25 @@ impl Cell {
             cell_type: CellType::Empty,
             state: CellState::Hidden,
         }
+    }
+
+    pub fn is_flagged(&self) -> bool {
+        matches!(self.state, CellState::Flagged)
+    }
+
+    pub fn can_chord(&self, board: &Board, position: &Position) -> bool {
+        let CellType::Numbered(nearby_bomb_count) = self.cell_type else {
+            return false;
+        };
+
+        let CellState::Revealed = self.state else {
+            return false;
+        };
+
+        let neigbors = board.get_cell_neighbors(position);
+        let flagged_cells_count = neigbors.iter().filter(|c| c.is_flagged()).count();
+
+        nearby_bomb_count == flagged_cells_count as u8
     }
 
     pub fn reveal(&mut self) {
@@ -438,7 +497,7 @@ impl Difficulty {
                 rows_number,
                 column_number: _,
                 bomb_number: _,
-            } => rows_number.clone(),
+            } => *rows_number,
         }
     }
 
@@ -451,7 +510,7 @@ impl Difficulty {
                 rows_number,
                 column_number: _,
                 bomb_number: _,
-            } => rows_number.clone(),
+            } => *rows_number,
         }
     }
 
@@ -464,7 +523,7 @@ impl Difficulty {
                 rows_number,
                 column_number: _,
                 bomb_number: _,
-            } => rows_number.clone(),
+            } => *rows_number,
         }
     }
 }

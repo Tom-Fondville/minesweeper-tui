@@ -3,7 +3,7 @@ use ratatui::DefaultTerminal;
 use std::io::{self};
 
 use crate::{
-    game::board::{Board, Difficulty},
+    game::{Game, board::Difficulty},
     terminal::terminal_state::{
         terminal_exiting_state::TerminalExitingState, terminal_in_game_state::TerminalInGameState,
         terminal_main_menu_state::TerminalMainMenuState,
@@ -29,7 +29,7 @@ impl App {
         Self {
             current_state: AppState::MainMenu,
             last_state: None,
-            in_game_state: TerminalInGameState::new(Board::new(Difficulty::Easy)),
+            in_game_state: TerminalInGameState::new(Game::new(Difficulty::Easy)),
             need_exit: false,
         }
     }
@@ -46,7 +46,7 @@ impl App {
     }
 
     pub fn start_new_board(&mut self, difficulty: Difficulty) {
-        self.in_game_state = TerminalInGameState::new(Board::new(difficulty));
+        self.in_game_state.change_difficulty(difficulty);
         self.change_current_state(AppState::InGame);
     }
 
