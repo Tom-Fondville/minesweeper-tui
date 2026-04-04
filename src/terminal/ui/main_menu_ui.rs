@@ -61,8 +61,6 @@ impl<'a> StatefulWidget for MainMenuUi<'a> {
             )
             .highlight_symbol("▶ ");
 
-        // let mut list_state = ListState::default();
-        // list_state.select(Some(*self.selected_index));
         StatefulWidget::render(list, body, buf, state);
 
         Line::from(format!(

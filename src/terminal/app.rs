@@ -7,7 +7,7 @@ pub mod in_game_view;
 pub mod main_menu_view;
 
 use crate::{
-    game::board::Difficulty,
+    game::difficulty::Difficulty,
     terminal::app::{
         exiting_view::ExitingView, in_game_view::InGameView, main_menu_view::MainMenuView,
     },

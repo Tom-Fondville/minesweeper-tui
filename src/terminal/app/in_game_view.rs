@@ -2,10 +2,7 @@ use crossterm::event::{self, KeyCode, KeyEvent};
 use ratatui::{DefaultTerminal, widgets::Widget};
 
 use crate::{
-    game::{
-        Game,
-        board::{Board, Difficulty, Position},
-    },
+    game::{Game, board::Board, difficulty::Difficulty, position::Position},
     terminal::{
         app::{App, AppState},
         ui::in_game_ui::InGameUi,
@@ -23,6 +20,7 @@ pub struct CursorPositon {
     pub row: u16,
     pub column: u16,
 }
+
 impl CursorPositon {
     pub fn new(row: u16, column: u16) -> Self {
         Self { row, column }

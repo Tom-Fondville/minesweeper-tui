@@ -5,7 +5,7 @@ use ratatui::{
 };
 
 use crate::{
-    game::board::Difficulty,
+    game::difficulty::Difficulty,
     terminal::{
         app::{App, AppState},
         ui::{difficulty_ui::DifficultyUi, main_menu_ui::MainMenuUi},

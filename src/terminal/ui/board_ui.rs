@@ -6,7 +6,11 @@ use ratatui::{
 };
 
 use crate::{
-    game::board::{Board, Cell, CellState, CellType, Status},
+    game::{
+        board::Board,
+        cell::{Cell, CellState, CellType},
+        status::Status,
+    },
     terminal::app::in_game_view::CursorPositon,
 };
 

@@ -1,6 +1,10 @@
-use crate::game::board::{Board, Difficulty};
+use crate::game::{board::Board, difficulty::Difficulty};
 
 pub mod board;
+pub mod cell;
+pub mod difficulty;
+pub mod position;
+pub mod status;
 
 pub struct Game {
     pub board: Board,
