@@ -3,7 +3,7 @@ use ratatui::DefaultTerminal;
 use std::io::{self};
 
 use crate::{
-    game::{Game, board::Difficulty},
+    game::board::Difficulty,
     terminal::terminal_state::{
         terminal_exiting_state::TerminalExitingState, terminal_in_game_state::TerminalInGameState,
         terminal_main_menu_state::TerminalMainMenuState,
@@ -20,6 +20,7 @@ pub enum AppState {
 pub struct App {
     pub current_state: AppState,
     pub last_state: Option<AppState>,
+    pub main_menu_state: TerminalMainMenuState,
     pub in_game_state: TerminalInGameState,
     pub need_exit: bool,
 }
@@ -29,7 +30,8 @@ impl App {
         Self {
             current_state: AppState::MainMenu,
             last_state: None,
-            in_game_state: TerminalInGameState::new(Game::new(Difficulty::Easy)),
+            main_menu_state: TerminalMainMenuState::default(),
+            in_game_state: TerminalInGameState::default(),
             need_exit: false,
         }
     }
@@ -62,7 +64,7 @@ impl App {
 
     fn handle_tick(&mut self, terminal: &mut DefaultTerminal) {
         match self.current_state {
-            AppState::MainMenu => TerminalMainMenuState::draw(terminal),
+            AppState::MainMenu => self.main_menu_state.draw(terminal),
             AppState::Exiting => TerminalExitingState::draw(terminal),
             AppState::InGame => self.in_game_state.draw(terminal),
         }
