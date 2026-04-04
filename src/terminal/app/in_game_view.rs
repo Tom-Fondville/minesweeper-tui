@@ -1,10 +1,5 @@
 use crossterm::event::{self, KeyCode, KeyEvent};
-use ratatui::{
-    DefaultTerminal,
-    layout::{Constraint, Direction, Layout},
-    style::Stylize,
-    text::{Line, Span},
-};
+use ratatui::{DefaultTerminal, widgets::Widget};
 
 use crate::{
     game::{
@@ -13,7 +8,7 @@ use crate::{
     },
     terminal::{
         app::{App, AppState},
-        ui::board_ui::BoardUi,
+        ui::in_game_ui::InGameUi,
     },
 };
 
@@ -38,12 +33,12 @@ impl CursorPositon {
     }
 }
 
-pub struct TerminalInGameState {
+pub struct InGameView {
     game: Game,
     cursor_position: CursorPositon,
 }
 
-impl Default for TerminalInGameState {
+impl Default for InGameView {
     fn default() -> Self {
         Self {
             game: Game::new(Difficulty::Easy),
@@ -51,7 +46,7 @@ impl Default for TerminalInGameState {
         }
     }
 }
-impl TerminalInGameState {
+impl InGameView {
     pub fn restart(&mut self) {
         self.game.restart();
         self.cursor_position = CursorPositon::defualt()
@@ -109,38 +104,8 @@ impl TerminalInGameState {
 
     pub fn draw(&self, terminal: &mut DefaultTerminal) {
         let _ = terminal.draw(|frame| {
-            let chunks = Layout::default()
-                .direction(Direction::Vertical)
-                .constraints([
-                    Constraint::Length(3),
-                    Constraint::Min(1),
-                    Constraint::Length(1),
-                ])
-                .split(frame.area());
-            let header = chunks[0];
-            let body = chunks[1];
-            let footer = chunks[2];
-
-            let title = Line::from(format!(
-                " {} - {}",
-                self.game.board.get_difficulty().as_string().bold(),
-                self.game.board.get_status().as_string(),
-            ))
-            .centered();
-            frame.render_widget(title, header);
-
-            frame.render_widget(BoardUi::new(&self.game.board, &self.cursor_position), body);
-
-            let footer_text = "minesweeper-tui ".italic();
-            let coords_text = Span::from(format!(
-                "{}, {} - bomb number {} flags {}, remaining cells {}",
-                self.cursor_position.row,
-                self.cursor_position.column,
-                self.game.board.get_bomb_number(),
-                self.game.board.get_flags_count(),
-                self.game.board.remaining_cells_count
-            ));
-            frame.render_widget(Line::from(vec![footer_text, coords_text]), footer);
+            InGameUi::new(&self.game, &self.cursor_position)
+                .render(frame.area(), frame.buffer_mut());
         });
     }
 

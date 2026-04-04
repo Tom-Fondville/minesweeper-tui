@@ -7,7 +7,7 @@ use ratatui::{
 
 use crate::{
     game::board::{Board, Cell, CellState, CellType, Status},
-    terminal::terminal_state::terminal_in_game_state::CursorPositon,
+    terminal::app::in_game_view::CursorPositon,
 };
 
 const CELL_WIDTH: u16 = 7;

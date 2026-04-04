@@ -3,8 +3,8 @@ use ratatui::DefaultTerminal;
 
 use crate::terminal::app::{App, AppState};
 
-pub struct TerminalExitingState {}
-impl TerminalExitingState {
+pub struct ExitingView {}
+impl ExitingView {
     pub fn draw(terminal: &mut DefaultTerminal) {
         let _ = terminal
             .draw(|frame| frame.render_widget("press 'q' if you realy want to quit", frame.area()));
