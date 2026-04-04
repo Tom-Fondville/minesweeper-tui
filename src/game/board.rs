@@ -12,7 +12,7 @@ pub struct Board {
     difficulty: Difficulty,
 
     first_cell_has_been_revealed: bool,
-    remaining_cells_count: u32,
+    pub remaining_cells_count: u32,
     flags_count: u16,
 }
 
@@ -109,6 +109,9 @@ impl Board {
             && matches!(cell.cell_type, CellType::Numbered(_))
         {
             self.chord(position);
+            if self.remaining_cells_count == self.bomb_number as u32 {
+                self.status = Status::Won
+            }
             return;
         }
 
@@ -162,7 +165,7 @@ impl Board {
             CellType::Empty => {
                 let neighbors = self.get_cell_neighbors_positions(position);
                 for neighbor in neighbors {
-                    self.reveal_cell(&neighbor);
+                    self.reveal_empty_cell(&neighbor);
                 }
             }
         };
@@ -267,10 +270,24 @@ impl Board {
     fn reveal_neighbors(&mut self, position: &Position) {
         let positions = self.get_cell_neighbors_positions(position);
         for position in positions {
-            if let Some(cell) = self.get_cell_mut(&position) {
-                cell.reveal();
-                self.remaining_cells_count -= 1;
+            let Some(cell) = self.get_cell_mut(&position) else {
+                continue;
+            };
+
+            if cell.is_flagged() || cell.is_revealed() {
+                continue;
             }
+
+            match cell.cell_type {
+                CellType::Bomb => self.status = Status::Loosed,
+                CellType::Numbered(_) => {
+                    cell.reveal();
+                    self.remaining_cells_count -= 1;
+                }
+                CellType::Empty => {
+                    self.reveal_empty_cell(&position);
+                }
+            };
         }
     }
 
@@ -404,6 +421,10 @@ impl Cell {
             cell_type: CellType::Empty,
             state: CellState::Hidden,
         }
+    }
+
+    pub fn is_revealed(&self) -> bool {
+        matches!(self.state, CellState::Revealed)
     }
 
     pub fn is_flagged(&self) -> bool {

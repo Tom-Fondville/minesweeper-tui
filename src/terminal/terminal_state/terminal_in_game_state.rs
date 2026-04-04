@@ -43,14 +43,15 @@ pub struct TerminalInGameState {
     cursor_position: CursorPositon,
 }
 
-impl TerminalInGameState {
-    pub fn new(game: Game) -> Self {
+impl Default for TerminalInGameState {
+    fn default() -> Self {
         Self {
-            game,
+            game: Game::new(Difficulty::Easy),
             cursor_position: CursorPositon::defualt(),
         }
     }
-
+}
+impl TerminalInGameState {
     pub fn restart(&mut self) {
         self.game.restart();
         self.cursor_position = CursorPositon::defualt()
@@ -131,11 +132,12 @@ impl TerminalInGameState {
 
             let footer_text = "minesweeper-tui ".italic();
             let coords_text = Span::from(format!(
-                "{}, {} - bomb number {} flags {}",
+                "{}, {} - bomb number {} flags {}, remaining cells {}",
                 self.cursor_position.row,
                 self.cursor_position.column,
                 self.game.board.get_bomb_number(),
-                self.game.board.get_flags_count()
+                self.game.board.get_flags_count(),
+                self.game.board.remaining_cells_count
             ));
             frame.render_widget(Line::from(vec![footer_text, coords_text]), footer);
         });
