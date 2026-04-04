@@ -3,7 +3,7 @@ use ratatui::{DefaultTerminal, widgets::Widget};
 
 use crate::{
     game::{Game, board::Board, difficulty::Difficulty, position::Position},
-    terminal::{
+    tui::{
         app::{App, AppState},
         ui::in_game_ui::InGameUi,
     },

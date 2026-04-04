@@ -1,7 +1,7 @@
 use crossterm::event::{self, KeyCode, KeyEvent};
 use ratatui::DefaultTerminal;
 
-use crate::terminal::app::{App, AppState};
+use crate::tui::app::{App, AppState};
 
 pub struct ExitingView {}
 impl ExitingView {

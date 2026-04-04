@@ -1,6 +1,6 @@
 use std::fs::File;
 
-use minesweeper_tui::terminal::app::App;
+use minesweeper_tui::tui::app::App;
 
 fn main() {
     let file = File::create("app.log").unwrap();

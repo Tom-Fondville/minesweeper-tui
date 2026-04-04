@@ -11,7 +11,7 @@ use crate::{
         cell::{Cell, CellState, CellType},
         status::Status,
     },
-    terminal::app::in_game_view::CursorPositon,
+    tui::app::in_game_view::CursorPositon,
 };
 
 const CELL_WIDTH: u16 = 7;

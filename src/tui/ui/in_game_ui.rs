@@ -8,7 +8,7 @@ use ratatui::{
 
 use crate::{
     game::Game,
-    terminal::{app::in_game_view::CursorPositon, ui::board_ui::BoardUi},
+    tui::{app::in_game_view::CursorPositon, ui::board_ui::BoardUi},
 };
 
 pub struct InGameUi<'a> {

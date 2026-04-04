@@ -6,7 +6,7 @@ use ratatui::{
     widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget, Widget},
 };
 
-use crate::terminal::ui::difficulty_ui::DifficultyUi;
+use crate::tui::ui::difficulty_ui::DifficultyUi;
 
 pub struct MainMenuUi<'a> {
     difficulties: &'a [DifficultyUi; 4],
