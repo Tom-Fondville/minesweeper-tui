@@ -58,7 +58,8 @@ impl TerminalInGameState {
     }
 
     pub fn change_difficulty(&mut self, difficulty: Difficulty) {
-        self.game.board = Board::new(difficulty)
+        self.game.board = Board::new(difficulty);
+        self.cursor_position = CursorPositon::defualt();
     }
 
     fn reveal_cell(&mut self) {
@@ -147,10 +148,14 @@ impl TerminalInGameState {
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
                 KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
+                //TODO here we should display a popup for confirmation before leaving the game
+                KeyCode::Esc => app.change_current_state(AppState::MainMenu),
+
                 KeyCode::Char('h') => app.in_game_state.move_cursor(MoveDirection::Left),
                 KeyCode::Char('j') => app.in_game_state.move_cursor(MoveDirection::Down),
                 KeyCode::Char('k') => app.in_game_state.move_cursor(MoveDirection::Up),
                 KeyCode::Char('l') => app.in_game_state.move_cursor(MoveDirection::Right),
+
                 KeyCode::Char('f') => app.in_game_state.toggle_flag(),
                 KeyCode::Char('r') => app.in_game_state.restart(),
                 KeyCode::Enter => app.in_game_state.reveal_cell(),
