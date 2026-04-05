@@ -56,10 +56,10 @@ impl Difficulty {
             Difficulty::Medium => 40,
             Difficulty::Hard => 99,
             Difficulty::Custom {
-                rows_number,
+                rows_number: _,
                 column_number: _,
-                bomb_number: _,
-            } => *rows_number,
+                bomb_number,
+            } => *bomb_number,
         }
     }
 }

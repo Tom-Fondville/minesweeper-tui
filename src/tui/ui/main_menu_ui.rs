@@ -1,20 +1,33 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Constraint, Direction, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Line,
-    widgets::{Block, Borders, List, ListItem, ListState, StatefulWidget, Widget},
+    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
 };
 
-use crate::tui::ui::difficulty_ui::DifficultyUi;
+use crate::tui::{
+    app::main_menu_view::{CustomDifficultyInputs, SelectedCustomDifficultyInput},
+    ui::difficulty_ui::DifficultyUi,
+};
 
 pub struct MainMenuUi<'a> {
     difficulties: &'a [DifficultyUi; 4],
+    custom_difficulty_inputs: &'a CustomDifficultyInputs,
+    selected_input: &'a SelectedCustomDifficultyInput,
 }
 
 impl<'a> MainMenuUi<'a> {
-    pub fn new(difficulties: &'a [DifficultyUi; 4]) -> Self {
-        Self { difficulties }
+    pub fn new(
+        difficulties: &'a [DifficultyUi; 4],
+        custom_difficulty_inputs: &'a CustomDifficultyInputs,
+        selected_input: &'a SelectedCustomDifficultyInput,
+    ) -> Self {
+        Self {
+            difficulties,
+            custom_difficulty_inputs,
+            selected_input,
+        }
     }
 
     pub fn get_selected_difficulty(&self, state: &mut ListState) -> DifficultyUi {
@@ -47,6 +60,10 @@ impl<'a> StatefulWidget for MainMenuUi<'a> {
             difficulty_items.push(ListItem::new(difficulty.as_str()));
         }
 
+        let body_layout =
+            Layout::vertical(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(body);
+
         let list = List::new(difficulty_items)
             .block(
                 Block::default()
@@ -61,12 +78,78 @@ impl<'a> StatefulWidget for MainMenuUi<'a> {
             )
             .highlight_symbol("▶ ");
 
-        StatefulWidget::render(list, body, buf, state);
+        StatefulWidget::render(list, body_layout[0], buf, state);
+        if self.get_selected_difficulty(state) == DifficultyUi::Custom {
+            CustomDifficultyInputsUi::new(self.custom_difficulty_inputs, self.selected_input)
+                .render(body_layout[1], buf);
+        }
 
         Line::from(format!(
             "selected: {}",
             self.get_selected_difficulty(state).as_str()
         ))
         .render(footer, buf);
+    }
+}
+
+pub struct CustomDifficultyInputsUi<'a> {
+    rows: &'a str,
+    columns: &'a str,
+    bombs: &'a str,
+    selected_input: &'a SelectedCustomDifficultyInput,
+}
+
+impl<'a> CustomDifficultyInputsUi<'a> {
+    pub fn new(
+        custom_difficulty_inputs: &'a CustomDifficultyInputs,
+        selected_input: &'a SelectedCustomDifficultyInput,
+    ) -> Self {
+        Self {
+            rows: &custom_difficulty_inputs.rows,
+            columns: &custom_difficulty_inputs.colomns,
+            bombs: &custom_difficulty_inputs.bombs,
+            selected_input,
+        }
+    }
+}
+
+impl<'a> Widget for CustomDifficultyInputsUi<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
+        let chunks = Layout::horizontal(vec![
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+            Constraint::Percentage(33),
+        ])
+        .split(area);
+
+        let mut rows_paragraph =
+            Paragraph::new(self.rows).block(Block::default().title("rows").borders(Borders::ALL));
+
+        let mut columns_paragraph = Paragraph::new(self.columns)
+            .block(Block::default().title("columns").borders(Borders::ALL));
+
+        let mut bombs_paragraph =
+            Paragraph::new(self.bombs).block(Block::default().title("bombs").borders(Borders::ALL));
+
+        let selected_style = Style::default().bg(Color::Cyan);
+        match self.selected_input {
+            SelectedCustomDifficultyInput::None => (),
+            SelectedCustomDifficultyInput::Rows => {
+                rows_paragraph = rows_paragraph.style(selected_style)
+            }
+            SelectedCustomDifficultyInput::Colomns => {
+                columns_paragraph = columns_paragraph.style(selected_style);
+            }
+            SelectedCustomDifficultyInput::Bombs => {
+                bombs_paragraph = bombs_paragraph.style(selected_style)
+            }
+        }
+
+        rows_paragraph.render(chunks[0], buf);
+        columns_paragraph.render(chunks[1], buf);
+        bombs_paragraph.render(chunks[2], buf);
     }
 }

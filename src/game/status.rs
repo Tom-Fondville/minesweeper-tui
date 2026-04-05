@@ -8,7 +8,7 @@ pub enum Status {
 impl Status {
     pub fn as_string(&self) -> String {
         match self {
-            Status::Running => "".to_string(),
+            Status::Running => "running".to_string(),
             Status::Loosed => "loosed".to_string(),
             Status::Won => "won".to_string(),
         }

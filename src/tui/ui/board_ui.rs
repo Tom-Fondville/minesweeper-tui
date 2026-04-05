@@ -1,7 +1,7 @@
 use ratatui::{
     buffer::Buffer,
     layout::Rect,
-    style::{Color, Style},
+    style::{Color, Style, Stylize},
     text::Line,
     widgets::{Block, Padding, Paragraph, Widget},
 };
@@ -66,6 +66,8 @@ impl<'a> Widget for BoardUi<'a> {
             Line::from(
                 "your terminal is to small to display the grid, please rezise your terminal",
             )
+            .centered()
+            .fg(Color::Red)
             .render(area, buf);
             return;
         }
