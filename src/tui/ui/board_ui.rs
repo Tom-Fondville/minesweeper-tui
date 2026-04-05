@@ -2,6 +2,7 @@ use ratatui::{
     buffer::Buffer,
     layout::Rect,
     style::{Color, Style},
+    text::Line,
     widgets::{Block, Padding, Paragraph, Widget},
 };
 
@@ -60,6 +61,14 @@ impl<'a> Widget for BoardUi<'a> {
         let collumns = self.board.get_columns_count();
         let grid_width = (2 + CELL_WIDTH) * collumns;
         let grid_height = (1 + CELL_HEIGHT) * rows;
+
+        if area.width <= grid_width || area.height <= grid_height {
+            Line::from(
+                "your terminal is to small to display the grid, please rezise your terminal",
+            )
+            .render(area, buf);
+            return;
+        }
 
         let grid_area = Rect {
             x: area.x + (area.width - grid_width) / 2,
