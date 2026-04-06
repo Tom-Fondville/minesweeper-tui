@@ -3,18 +3,21 @@ use ratatui::{
     layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style},
     text::Line,
-    widgets::{Block, Borders, List, ListItem, ListState, Paragraph, StatefulWidget, Widget},
+    widgets::{
+        Block, Borders, Clear, List, ListItem, ListState, Paragraph, StatefulWidget, Widget,
+    },
 };
 
 use crate::tui::{
     app::main_menu_view::{CustomDifficultyInputs, SelectedCustomDifficultyInput},
-    ui::difficulty_ui::DifficultyUi,
+    ui::{difficulty_ui::DifficultyUi, helpers::rectangle::centered_rectangle},
 };
 
 pub struct MainMenuUi<'a> {
     difficulties: &'a [DifficultyUi; 4],
     custom_difficulty_inputs: &'a CustomDifficultyInputs,
     selected_input: &'a SelectedCustomDifficultyInput,
+    display_help_menu: &'a bool,
 }
 
 impl<'a> MainMenuUi<'a> {
@@ -22,11 +25,13 @@ impl<'a> MainMenuUi<'a> {
         difficulties: &'a [DifficultyUi; 4],
         custom_difficulty_inputs: &'a CustomDifficultyInputs,
         selected_input: &'a SelectedCustomDifficultyInput,
+        display_help_menu: &'a bool,
     ) -> Self {
         Self {
             difficulties,
             custom_difficulty_inputs,
             selected_input,
+            display_help_menu,
         }
     }
 
@@ -61,8 +66,7 @@ impl<'a> StatefulWidget for MainMenuUi<'a> {
         }
 
         let body_layout =
-            Layout::vertical(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
-                .split(body);
+            Layout::vertical(vec![Constraint::Max(6), Constraint::Min(3)]).split(body);
 
         let list = List::new(difficulty_items)
             .block(
@@ -84,11 +88,22 @@ impl<'a> StatefulWidget for MainMenuUi<'a> {
                 .render(body_layout[1], buf);
         }
 
+        if *self.display_help_menu {
+            MainMenuHelpMenuPopupUi::default().render(body, buf);
+        }
+
+        let footer_layout =
+            Layout::horizontal(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
+                .split(footer);
+
         Line::from(format!(
             "selected: {}",
             self.get_selected_difficulty(state).as_str()
         ))
-        .render(footer, buf);
+        .render(footer_layout[0], buf);
+        Line::from("\"?\" for help")
+            .right_aligned()
+            .render(footer_layout[1], buf);
     }
 }
 
@@ -148,8 +163,46 @@ impl<'a> Widget for CustomDifficultyInputsUi<'a> {
             }
         }
 
-        rows_paragraph.render(chunks[0], buf);
-        columns_paragraph.render(chunks[1], buf);
-        bombs_paragraph.render(chunks[2], buf);
+        rows_paragraph.render(
+            Layout::vertical(vec![Constraint::Max(3)]).split(chunks[0])[0],
+            buf,
+        );
+        columns_paragraph.render(
+            Layout::vertical(vec![Constraint::Max(3)]).split(chunks[1])[0],
+            buf,
+        );
+        bombs_paragraph.render(
+            Layout::vertical(vec![Constraint::Max(3)]).split(chunks[2])[0],
+            buf,
+        );
+    }
+}
+
+#[derive(Default)]
+pub struct MainMenuHelpMenuPopupUi {}
+impl Widget for MainMenuHelpMenuPopupUi {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
+        let popup_area = centered_rectangle(30, 20, area);
+        Widget::render(Clear, popup_area, buf);
+
+        let popup_block = Block::default()
+            .title("Help popup")
+            .borders(Borders::ALL)
+            .style(Style::default().bg(Color::DarkGray));
+
+        let items = [
+            "j     >> go down",
+            "k     >> go up",
+            "tab   >> cycle through inputs for custom difficulty",
+            "enter >> start new game",
+            "q     >> to quit",
+            "?     >> open help menu",
+        ];
+        let list =
+            List::new(items.iter().map(|item| ListItem::new(item.to_string()))).block(popup_block);
+        Widget::render(list, popup_area, buf);
     }
 }

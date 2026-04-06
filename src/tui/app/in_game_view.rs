@@ -34,6 +34,9 @@ impl CursorPositon {
 pub struct InGameView {
     game: Game,
     cursor_position: CursorPositon,
+    is_help_menu_displayed: bool,
+    is_confirm_quit_game_popup_displayed: bool,
+    is_quit_game_confirmed: bool,
 }
 
 impl Default for InGameView {
@@ -41,6 +44,9 @@ impl Default for InGameView {
         Self {
             game: Game::new(Difficulty::Easy),
             cursor_position: CursorPositon::defualt(),
+            is_help_menu_displayed: false,
+            is_confirm_quit_game_popup_displayed: false,
+            is_quit_game_confirmed: false,
         }
     }
 }
@@ -100,19 +106,42 @@ impl InGameView {
         }
     }
 
+    fn toggle_help_menu(&mut self) {
+        self.is_help_menu_displayed = !self.is_help_menu_displayed
+    }
+
+    fn exit_help_menu(&mut self) {
+        self.is_help_menu_displayed = false;
+    }
+
     pub fn draw(&self, terminal: &mut DefaultTerminal) {
         let _ = terminal.draw(|frame| {
-            InGameUi::new(&self.game, &self.cursor_position)
-                .render(frame.area(), frame.buffer_mut());
+            InGameUi::new(
+                &self.game,
+                &self.cursor_position,
+                &self.is_help_menu_displayed,
+                &self.is_confirm_quit_game_popup_displayed,
+            )
+            .render(frame.area(), frame.buffer_mut());
         });
     }
 
     pub fn handle_key_event(app: &mut App, key_event: KeyEvent) {
+        if app.in_game_state.is_confirm_quit_game_popup_displayed {
+            Self::handle_key_event_when_confirm_quit_game_popup_displayed(app, key_event);
+            return;
+        }
+
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
                 KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-                //TODO here we should display a popup for confirmation before leaving the game
-                KeyCode::Esc => app.change_current_state(AppState::MainMenu),
+                KeyCode::Esc => {
+                    if app.in_game_state.is_help_menu_displayed {
+                        app.in_game_state.exit_help_menu();
+                    }
+
+                    app.in_game_state.is_confirm_quit_game_popup_displayed = true
+                }
 
                 KeyCode::Char('h') => app.in_game_state.move_cursor(MoveDirection::Left),
                 KeyCode::Char('j') => app.in_game_state.move_cursor(MoveDirection::Down),
@@ -123,7 +152,26 @@ impl InGameView {
                 KeyCode::Char('r') => app.in_game_state.restart(),
                 KeyCode::Enter => app.in_game_state.reveal_cell(),
                 KeyCode::Char(' ') => app.in_game_state.reveal_cell(),
+                KeyCode::Char('?') => app.in_game_state.toggle_help_menu(),
                 _ => {}
+            },
+            event::KeyEventKind::Repeat => (),
+            event::KeyEventKind::Release => (),
+        }
+    }
+
+    pub fn handle_key_event_when_confirm_quit_game_popup_displayed(
+        app: &mut App,
+        key_event: KeyEvent,
+    ) {
+        match key_event.kind {
+            event::KeyEventKind::Press => match key_event.code {
+                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
+                KeyCode::Esc => {
+                    app.in_game_state.is_confirm_quit_game_popup_displayed = false;
+                    app.change_current_state(AppState::MainMenu);
+                }
+                _ => app.in_game_state.is_confirm_quit_game_popup_displayed = false,
             },
             event::KeyEventKind::Repeat => (),
             event::KeyEventKind::Release => (),

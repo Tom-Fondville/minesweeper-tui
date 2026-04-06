@@ -16,7 +16,140 @@ pub struct MainMenuView {
     difficulties: [DifficultyUi; 4],
     list_state: ListState,
     custom_difficulty_inputs: CustomDifficultyInputs,
+    is_help_menu_displayed: bool,
 }
+
+impl Default for MainMenuView {
+    fn default() -> Self {
+        let mut list_state = ListState::default();
+        list_state.select(Some(0));
+        Self {
+            difficulties: [
+                DifficultyUi::Easy,
+                DifficultyUi::Medium,
+                DifficultyUi::Hard,
+                DifficultyUi::Custom,
+            ],
+            list_state,
+            custom_difficulty_inputs: CustomDifficultyInputs::default(),
+            is_help_menu_displayed: false,
+        }
+    }
+}
+
+impl MainMenuView {
+    fn select_next_difficulty(&mut self) {
+        self.list_state.select_next();
+    }
+
+    fn select_previous_difficulty(&mut self) {
+        self.list_state.select_previous();
+    }
+
+    fn get_selected_difficulty(&self) -> &DifficultyUi {
+        &self.difficulties[self.list_state.selected().unwrap_or(0)]
+    }
+
+    fn is_custom_difficulty_selected(&self) -> bool {
+        self.custom_difficulty_inputs.selected_input != SelectedCustomDifficultyInput::None
+    }
+
+    fn toggle_help_menu(&mut self) {
+        self.is_help_menu_displayed = !self.is_help_menu_displayed
+    }
+
+    fn exit_help_menu(&mut self) {
+        self.is_help_menu_displayed = false;
+    }
+
+    pub fn draw(&mut self, terminal: &mut DefaultTerminal) {
+        let _ = terminal.draw(|frame| {
+            MainMenuUi::new(
+                &self.difficulties,
+                &self.custom_difficulty_inputs,
+                &self.custom_difficulty_inputs.selected_input,
+                &self.is_help_menu_displayed,
+            )
+            .render(frame.area(), frame.buffer_mut(), &mut self.list_state)
+        });
+    }
+
+    pub fn handle_key_event(app: &mut App, key_event: KeyEvent) {
+        if app.main_menu_state.is_custom_difficulty_selected() {
+            Self::handle_key_event_when_custom_difficulty_selected(app, key_event);
+            return;
+        }
+
+        match key_event.kind {
+            event::KeyEventKind::Press => match key_event.code {
+                KeyCode::Char('j') => app.main_menu_state.select_next_difficulty(),
+                KeyCode::Char('k') => app.main_menu_state.select_previous_difficulty(),
+                KeyCode::Esc => app.main_menu_state.exit_help_menu(),
+                KeyCode::Tab => {
+                    let difficulty_ui = app.main_menu_state.get_selected_difficulty();
+                    if *difficulty_ui != DifficultyUi::Custom {
+                        return;
+                    }
+
+                    app.main_menu_state.custom_difficulty_inputs.focus();
+                }
+                KeyCode::Enter => {
+                    let difficulty_ui = app.main_menu_state.get_selected_difficulty();
+                    if *difficulty_ui == DifficultyUi::Custom {
+                        app.main_menu_state.custom_difficulty_inputs.focus();
+                        return;
+                    }
+
+                    let difficulty = match *difficulty_ui {
+                        DifficultyUi::Easy => Difficulty::Easy,
+                        DifficultyUi::Medium => Difficulty::Medium,
+                        DifficultyUi::Hard => Difficulty::Hard,
+                        DifficultyUi::Custom => unreachable!(),
+                    };
+
+                    app.start_new_board(difficulty);
+                }
+                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
+                KeyCode::Char('?') => app.main_menu_state.toggle_help_menu(),
+                _ => (),
+            },
+            event::KeyEventKind::Repeat => (),
+            event::KeyEventKind::Release => (),
+        }
+    }
+
+    fn handle_key_event_when_custom_difficulty_selected(app: &mut App, key_event: KeyEvent) {
+        match key_event.kind {
+            event::KeyEventKind::Press => match key_event.code {
+                KeyCode::Enter => {
+                    let Some(difficulty) = app
+                        .main_menu_state
+                        .custom_difficulty_inputs
+                        .create_custom_difficulty()
+                    else {
+                        return;
+                    };
+
+                    app.start_new_board(difficulty);
+                }
+                KeyCode::Tab => app.main_menu_state.custom_difficulty_inputs.focus_next(),
+                KeyCode::BackTab => app
+                    .main_menu_state
+                    .custom_difficulty_inputs
+                    .focus_previous(),
+                KeyCode::Backspace => app.main_menu_state.custom_difficulty_inputs.delete(),
+                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
+                KeyCode::Char('?') => app.main_menu_state.toggle_help_menu(),
+                KeyCode::Char(char) => app.main_menu_state.custom_difficulty_inputs.write(char),
+                KeyCode::Esc => app.main_menu_state.custom_difficulty_inputs.un_focus(),
+                _ => (),
+            },
+            event::KeyEventKind::Repeat => (),
+            event::KeyEventKind::Release => (),
+        }
+    }
+}
+
 #[derive(Default, PartialEq)]
 pub enum SelectedCustomDifficultyInput {
     #[default]
@@ -115,123 +248,5 @@ impl CustomDifficultyInputs {
             column_number: self.colomns.parse::<u16>().ok()?,
             bomb_number: self.bombs.parse::<u16>().ok()?,
         })
-    }
-}
-
-impl Default for MainMenuView {
-    fn default() -> Self {
-        let mut list_state = ListState::default();
-        list_state.select(Some(0));
-        Self {
-            difficulties: [
-                DifficultyUi::Easy,
-                DifficultyUi::Medium,
-                DifficultyUi::Hard,
-                DifficultyUi::Custom,
-            ],
-            list_state,
-            custom_difficulty_inputs: CustomDifficultyInputs::default(),
-        }
-    }
-}
-
-impl MainMenuView {
-    fn select_next_difficulty(&mut self) {
-        self.list_state.select_next();
-    }
-
-    fn select_previous_difficulty(&mut self) {
-        self.list_state.select_previous();
-    }
-
-    fn get_selected_difficulty(&self) -> &DifficultyUi {
-        &self.difficulties[self.list_state.selected().unwrap_or(0)]
-    }
-
-    fn is_custom_difficulty_selected(&self) -> bool {
-        self.custom_difficulty_inputs.selected_input != SelectedCustomDifficultyInput::None
-    }
-
-    pub fn draw(&mut self, terminal: &mut DefaultTerminal) {
-        let _ = terminal.draw(|frame| {
-            MainMenuUi::new(
-                &self.difficulties,
-                &self.custom_difficulty_inputs,
-                &self.custom_difficulty_inputs.selected_input,
-            )
-            .render(frame.area(), frame.buffer_mut(), &mut self.list_state)
-        });
-    }
-
-    pub fn handle_key_event(app: &mut App, key_event: KeyEvent) {
-        if app.main_menu_state.is_custom_difficulty_selected() {
-            Self::handle_key_event_when_custom_difficulty_selected(app, key_event);
-            return;
-        }
-
-        match key_event.kind {
-            event::KeyEventKind::Press => match key_event.code {
-                KeyCode::Char('j') => app.main_menu_state.select_next_difficulty(),
-                KeyCode::Char('k') => app.main_menu_state.select_previous_difficulty(),
-                KeyCode::Tab => {
-                    let difficulty_ui = app.main_menu_state.get_selected_difficulty();
-                    if *difficulty_ui != DifficultyUi::Custom {
-                        return;
-                    }
-
-                    app.main_menu_state.custom_difficulty_inputs.focus();
-                }
-                KeyCode::Enter => {
-                    let difficulty_ui = app.main_menu_state.get_selected_difficulty();
-                    if *difficulty_ui == DifficultyUi::Custom {
-                        app.main_menu_state.custom_difficulty_inputs.focus();
-                        return;
-                    }
-
-                    let difficulty = match *difficulty_ui {
-                        DifficultyUi::Easy => Difficulty::Easy,
-                        DifficultyUi::Medium => Difficulty::Medium,
-                        DifficultyUi::Hard => Difficulty::Hard,
-                        DifficultyUi::Custom => unreachable!(),
-                    };
-
-                    app.start_new_board(difficulty);
-                }
-                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-                _ => (),
-            },
-            event::KeyEventKind::Repeat => (),
-            event::KeyEventKind::Release => (),
-        }
-    }
-
-    fn handle_key_event_when_custom_difficulty_selected(app: &mut App, key_event: KeyEvent) {
-        match key_event.kind {
-            event::KeyEventKind::Press => match key_event.code {
-                KeyCode::Enter => {
-                    let Some(difficulty) = app
-                        .main_menu_state
-                        .custom_difficulty_inputs
-                        .create_custom_difficulty()
-                    else {
-                        return;
-                    };
-
-                    app.start_new_board(difficulty);
-                }
-                KeyCode::Tab => app.main_menu_state.custom_difficulty_inputs.focus_next(),
-                KeyCode::BackTab => app
-                    .main_menu_state
-                    .custom_difficulty_inputs
-                    .focus_previous(),
-                KeyCode::Backspace => app.main_menu_state.custom_difficulty_inputs.delete(),
-                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-                KeyCode::Char(char) => app.main_menu_state.custom_difficulty_inputs.write(char),
-                KeyCode::Esc => app.main_menu_state.custom_difficulty_inputs.un_focus(),
-                _ => (),
-            },
-            event::KeyEventKind::Repeat => (),
-            event::KeyEventKind::Release => (),
-        }
     }
 }

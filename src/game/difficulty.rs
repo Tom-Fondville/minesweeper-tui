@@ -28,7 +28,7 @@ impl Difficulty {
         match self {
             Difficulty::Easy => 9,
             Difficulty::Medium => 16,
-            Difficulty::Hard => 30,
+            Difficulty::Hard => 16,
             Difficulty::Custom {
                 rows_number,
                 column_number: _,
@@ -41,7 +41,7 @@ impl Difficulty {
         match self {
             Difficulty::Easy => 9,
             Difficulty::Medium => 16,
-            Difficulty::Hard => 16,
+            Difficulty::Hard => 30,
             Difficulty::Custom {
                 rows_number,
                 column_number: _,
