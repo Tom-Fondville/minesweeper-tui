@@ -54,10 +54,13 @@ impl<'a> Widget for InGameUi<'a> {
         let body = chunks[1];
         let footer = chunks[2];
 
+        let elapsed_time_in_seconds = self.game.elapsed_time_since_start().as_secs();
         Line::from(format!(
-            " {} - {}",
+            " {} - {} - {}:{}",
             self.game.board.get_difficulty().as_string().bold(),
             self.game.board.get_status().as_string(),
+            elapsed_time_in_seconds / 60,
+            elapsed_time_in_seconds % 60
         ))
         .centered()
         .render(header, buf);
