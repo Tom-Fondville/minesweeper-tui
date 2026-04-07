@@ -1,16 +1,16 @@
 use ratatui::{
     buffer::Buffer,
-    layout::{Alignment, Constraint, Direction, Layout, Rect},
+    layout::{Constraint, Direction, Layout, Rect},
     style::{Color, Modifier, Style, Stylize},
     text::{Line, Span},
     widgets::{Block, Borders, Clear, List, ListItem, Paragraph, Widget},
 };
 
 use crate::{
-    game::Game,
+    game::{Game, difficulty::Difficulty, status::Status},
     tui::{
         app::in_game_view::CursorPositon,
-        ui::{board_ui::BoardUi, helpers::rectangle::centered_rectangle},
+        ui::{board_ui::BoardUi, helpers::rectangle::centered_rectangle_exact},
     },
 };
 
@@ -71,6 +71,14 @@ impl<'a> Widget for InGameUi<'a> {
             ConfirmQuitGamePopupUi::default().render(body, buf);
         }
 
+        if !self.game.board.is_game_running() {
+            GameEndedPopupUi::new(
+                self.game.board.get_status(),
+                self.game.board.get_difficulty(),
+            )
+            .render(body, buf);
+        }
+
         let footer_layout =
             Layout::horizontal(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
                 .split(footer);
@@ -94,15 +102,11 @@ impl<'a> Widget for InGameUi<'a> {
 
 #[derive(Default)]
 pub struct InGameHelpMenuPopupUi {}
-
 impl Widget for InGameHelpMenuPopupUi {
     fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
-        let popup_area = centered_rectangle(30, 30, area);
-        Widget::render(Clear, popup_area, buf);
-
         let popup_block = Block::default()
             .title("Help popup")
             .borders(Borders::ALL)
@@ -122,66 +126,28 @@ impl Widget for InGameHelpMenuPopupUi {
         ];
         let list =
             List::new(items.iter().map(|item| ListItem::new(item.to_string()))).block(popup_block);
+
+        let width = items
+            .iter()
+            .map(|line| line.chars().count() as u16)
+            .max()
+            .unwrap_or(0)
+            + 4;
+        let height = list.len() as u16 + 2;
+        let popup_area = centered_rectangle_exact(width, height, area);
+        Widget::render(Clear, popup_area, buf);
+
         Widget::render(list, popup_area, buf);
     }
 }
 
 #[derive(Default)]
 pub struct ConfirmQuitGamePopupUi {}
-
-impl ConfirmQuitGamePopupUi {
-    pub fn toto(self, area: Rect, buf: &mut Buffer) {
-        let popup_area = centered_rectangle(40, 30, area);
-        Widget::render(Clear, popup_area, buf);
-
-        let popup_block = Block::default()
-            .title(" Confirmation ")
-            .borders(Borders::ALL)
-            .style(Style::default().bg(Color::Black));
-
-        let inner = popup_block.inner(popup_area);
-
-        let chunks = Layout::default()
-            .direction(Direction::Vertical)
-            .constraints([
-                Constraint::Percentage(30),
-                Constraint::Length(3),
-                Constraint::Length(2),
-                Constraint::Percentage(30),
-            ])
-            .split(inner);
-
-        // Texte stylé
-        let text = vec![
-            Line::from(Span::styled(
-                "⚠ Quitter la partie",
-                Style::default()
-                    .fg(Color::Yellow)
-                    .add_modifier(Modifier::BOLD),
-            )),
-            Line::from(""),
-            Line::from(Span::raw("Appuie sur ")),
-            Line::from(Span::styled(
-                "ESC",
-                Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
-            )),
-            Line::from(Span::raw(" à nouveau pour confirmer")),
-        ];
-
-        let paragraph = Paragraph::new(text).alignment(Alignment::Center);
-
-        popup_block.render(popup_area, buf);
-        paragraph.render(chunks[1], buf);
-    }
-}
 impl Widget for ConfirmQuitGamePopupUi {
     fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
-        let popup_area = centered_rectangle(18, 13, area);
-        Widget::render(Clear, popup_area, buf);
-
         let popup_block = Block::default()
             .title(" Quit Confirmation ")
             .borders(Borders::ALL)
@@ -198,12 +164,108 @@ impl Widget for ConfirmQuitGamePopupUi {
             Line::from(vec![
                 Span::raw("Press "),
                 Span::styled(
-                    "ESC",
+                    "ENTER",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 ),
-                Span::raw(" again to confirm"),
+                Span::raw(" to confirm"),
             ]),
         ];
+
+        let width = text
+            .iter()
+            .map(|line| line.width() as u16)
+            .max()
+            .unwrap_or(0)
+            + 4;
+        let height = text.len() as u16 + 2;
+        let popup_area = centered_rectangle_exact(width, height, area);
+        Widget::render(Clear, popup_area, buf);
+
+        Paragraph::new(text)
+            .block(popup_block)
+            .render(popup_area, buf);
+    }
+}
+
+pub struct GameEndedPopupUi<'a> {
+    game_status: &'a Status,
+    difficulty: &'a Difficulty,
+}
+
+impl<'a> GameEndedPopupUi<'a> {
+    fn new(game_status: &'a Status, difficulty: &'a Difficulty) -> Self {
+        Self {
+            game_status,
+            difficulty,
+        }
+    }
+}
+
+impl<'a> Widget for GameEndedPopupUi<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
+        let popup_block = Block::default()
+            .title(" Game ended ")
+            .borders(Borders::ALL)
+            .style(Style::default().bg(Color::Black));
+
+        let mut text = vec![
+            Line::from(Span::styled(
+                "Game ended in X amout of time (comming soong)",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            )),
+            Line::from(""),
+        ];
+
+        match self.game_status {
+            Status::Running => unreachable!(),
+            Status::Won => text.push(Line::from(vec![
+                Span::raw("You "),
+                Span::styled(
+                    "WON",
+                    Style::default()
+                        .fg(Color::Green)
+                        .add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(format!(
+                    " in difficulty {} !!!",
+                    self.difficulty.as_string()
+                )),
+            ])),
+            Status::Loosed => text.push(Line::from(vec![
+                Span::raw("You "),
+                Span::styled(
+                    "LOOSED",
+                    Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
+                ),
+                Span::raw(", you can always try again"),
+            ])),
+        }
+
+        text.push(Line::from(vec![
+            Span::raw("Press "),
+            Span::styled(
+                "r",
+                Style::default()
+                    .fg(Color::Yellow)
+                    .add_modifier(Modifier::BOLD),
+            ),
+            Span::raw(" to play again"),
+        ]));
+
+        let width = text
+            .iter()
+            .map(|line| line.width() as u16)
+            .max()
+            .unwrap_or(0)
+            + 4;
+        let height = text.len() as u16 + 2;
+        let popup_area = centered_rectangle_exact(width, height, area);
+        Widget::render(Clear, popup_area, buf);
 
         Paragraph::new(text)
             .block(popup_block)

@@ -10,7 +10,7 @@ use ratatui::{
 
 use crate::tui::{
     app::main_menu_view::{CustomDifficultyInputs, SelectedCustomDifficultyInput},
-    ui::{difficulty_ui::DifficultyUi, helpers::rectangle::centered_rectangle},
+    ui::{difficulty_ui::DifficultyUi, helpers::rectangle::centered_rectangle_exact},
 };
 
 pub struct MainMenuUi<'a> {
@@ -185,9 +185,6 @@ impl Widget for MainMenuHelpMenuPopupUi {
     where
         Self: Sized,
     {
-        let popup_area = centered_rectangle(30, 20, area);
-        Widget::render(Clear, popup_area, buf);
-
         let popup_block = Block::default()
             .title("Help popup")
             .borders(Borders::ALL)
@@ -203,6 +200,17 @@ impl Widget for MainMenuHelpMenuPopupUi {
         ];
         let list =
             List::new(items.iter().map(|item| ListItem::new(item.to_string()))).block(popup_block);
+
+        let width = items
+            .iter()
+            .map(|line| line.chars().count() as u16)
+            .max()
+            .unwrap_or(0)
+            + 4;
+        let height = list.len() as u16 + 2;
+        let popup_area = centered_rectangle_exact(width, height, area);
+        Widget::render(Clear, popup_area, buf);
+
         Widget::render(list, popup_area, buf);
     }
 }

@@ -167,7 +167,7 @@ impl InGameView {
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
                 KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-                KeyCode::Esc => {
+                KeyCode::Enter => {
                     app.in_game_state.is_confirm_quit_game_popup_displayed = false;
                     app.change_current_state(AppState::MainMenu);
                 }

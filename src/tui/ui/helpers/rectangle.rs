@@ -21,3 +21,14 @@ pub fn centered_rectangle(percent_x: u16, percent_y: u16, r: Rect) -> Rect {
 
     horizontal[1]
 }
+pub fn centered_rectangle_exact(width: u16, height: u16, area: Rect) -> Rect {
+    let x = area.x + (area.width.saturating_sub(width)) / 2;
+    let y = area.y + (area.height.saturating_sub(height)) / 2;
+
+    Rect {
+        x,
+        y,
+        width,
+        height,
+    }
+}
