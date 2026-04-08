@@ -1,3 +1,5 @@
+use std::time::Duration;
+
 use ratatui::{
     buffer::Buffer,
     layout::{Constraint, Direction, Layout, Rect},
@@ -9,7 +11,7 @@ use ratatui::{
 use crate::{
     game::{Game, difficulty::Difficulty, status::Status},
     tui::{
-        app::in_game_view::CursorPositon,
+        app::in_game_view::{CursorPositon, InGameViewPopup},
         ui::{board_ui::BoardUi, helpers::rectangle::centered_rectangle_exact},
     },
 };
@@ -17,22 +19,19 @@ use crate::{
 pub struct InGameUi<'a> {
     game: &'a Game,
     cursor_position: &'a CursorPositon,
-    display_help_menu: &'a bool,
-    display_confirm_quit_game_popup: &'a bool,
+    displayed_popup: Option<&'a InGameViewPopup>,
 }
 
 impl<'a> InGameUi<'a> {
     pub fn new(
         game: &'a Game,
         cursor_position: &'a CursorPositon,
-        display_help_menu: &'a bool,
-        display_confirm_quit_game_popup: &'a bool,
+        displayed_popup: Option<&'a InGameViewPopup>,
     ) -> Self {
         Self {
             game,
             cursor_position,
-            display_help_menu,
-            display_confirm_quit_game_popup,
+            displayed_popup,
         }
     }
 }
@@ -54,7 +53,7 @@ impl<'a> Widget for InGameUi<'a> {
         let body = chunks[1];
         let footer = chunks[2];
 
-        let elapsed_time_in_seconds = self.game.elapsed_time_since_start().as_secs();
+        let elapsed_time_in_seconds = self.game.get_game_duration().as_secs();
         Line::from(format!(
             " {} - {} - {}:{}",
             self.game.board.get_difficulty().as_string().bold(),
@@ -66,20 +65,19 @@ impl<'a> Widget for InGameUi<'a> {
         .render(header, buf);
 
         BoardUi::new(&self.game.board, self.cursor_position).render(body, buf);
-        if *self.display_help_menu {
-            InGameHelpMenuPopupUi::default().render(body, buf);
-        }
-
-        if *self.display_confirm_quit_game_popup {
-            ConfirmQuitGamePopupUi::default().render(body, buf);
-        }
-
-        if !self.game.board.is_game_running() {
-            GameEndedPopupUi::new(
-                self.game.board.get_status(),
-                self.game.board.get_difficulty(),
-            )
-            .render(body, buf);
+        if let Some(displayed_popup) = self.displayed_popup {
+            match displayed_popup {
+                InGameViewPopup::HelpMenu => InGameHelpMenuPopupUi::default().render(body, buf),
+                InGameViewPopup::GameStatus => GameEndedPopupUi::new(
+                    self.game.board.get_status(),
+                    self.game.board.get_difficulty(),
+                    &self.game.get_game_duration(),
+                )
+                .render(body, buf),
+                InGameViewPopup::QuitConfirmation => {
+                    ConfirmQuitGamePopupUi::default().render(body, buf)
+                }
+            }
         }
 
         let footer_layout =
@@ -125,6 +123,7 @@ impl Widget for InGameHelpMenuPopupUi {
             "enter >> to reveal cell",
             "r     >> to restart",
             "q     >> to quit",
+            "h     >> open/hide game status menu",
             "?     >> open help menu",
         ];
         let list =
@@ -193,13 +192,15 @@ impl Widget for ConfirmQuitGamePopupUi {
 pub struct GameEndedPopupUi<'a> {
     game_status: &'a Status,
     difficulty: &'a Difficulty,
+    duration: &'a Duration,
 }
 
 impl<'a> GameEndedPopupUi<'a> {
-    fn new(game_status: &'a Status, difficulty: &'a Difficulty) -> Self {
+    fn new(game_status: &'a Status, difficulty: &'a Difficulty, duration: &'a Duration) -> Self {
         Self {
             game_status,
             difficulty,
+            duration,
         }
     }
 }
@@ -216,7 +217,11 @@ impl<'a> Widget for GameEndedPopupUi<'a> {
 
         let mut text = vec![
             Line::from(Span::styled(
-                "Game ended in X amout of time (comming soong)",
+                format!(
+                    "Game ended in {}min {}s",
+                    self.duration.as_secs() / 60,
+                    self.duration.as_secs() % 60
+                ),
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),

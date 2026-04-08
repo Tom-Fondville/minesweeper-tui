@@ -22,7 +22,7 @@ pub struct App {
     pub current_state: AppState,
     pub last_state: Option<AppState>,
     pub main_menu_state: MainMenuView,
-    pub in_game_state: InGameView,
+    pub in_game_view: InGameView,
     pub need_exit: bool,
 }
 
@@ -38,7 +38,7 @@ impl App {
             current_state: AppState::MainMenu,
             last_state: None,
             main_menu_state: MainMenuView::default(),
-            in_game_state: InGameView::default(),
+            in_game_view: InGameView::default(),
             need_exit: false,
         }
     }
@@ -55,7 +55,7 @@ impl App {
     }
 
     pub fn start_new_board(&mut self, difficulty: Difficulty) {
-        self.in_game_state.change_difficulty(difficulty);
+        self.in_game_view.change_difficulty(difficulty);
         self.change_current_state(AppState::InGame);
     }
 
@@ -73,7 +73,7 @@ impl App {
         match self.current_state {
             AppState::MainMenu => self.main_menu_state.draw(terminal),
             AppState::Exiting => ExitingView::draw(terminal),
-            AppState::InGame => self.in_game_state.draw(terminal),
+            AppState::InGame => self.in_game_view.draw(terminal),
         }
 
         let event = event::read();

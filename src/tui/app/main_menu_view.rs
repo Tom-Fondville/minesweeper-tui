@@ -58,7 +58,7 @@ impl MainMenuView {
         self.is_help_menu_displayed = !self.is_help_menu_displayed
     }
 
-    fn exit_help_menu(&mut self) {
+    pub fn exit_help_menu(&mut self) {
         self.is_help_menu_displayed = false;
     }
 
