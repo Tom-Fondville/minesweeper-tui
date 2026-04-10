@@ -72,6 +72,10 @@ impl Board {
         matches!(self.status, Status::Running)
     }
 
+    pub fn is_game_ended(&self) -> bool {
+        matches!(self.status, Status::Won | Status::Loosed)
+    }
+
     pub fn toggle_flag(&mut self, position: &Position) {
         if !self.is_game_running() {
             return;

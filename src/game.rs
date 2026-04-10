@@ -1,6 +1,6 @@
 use std::time::{Duration, Instant};
 
-use crate::game::{board::Board, difficulty::Difficulty};
+use crate::game::{board::Board, difficulty::Difficulty, position::Position};
 
 pub mod board;
 pub mod cell;
@@ -33,6 +33,18 @@ impl Game {
         self.start_time = Instant::now();
     }
 
+    pub fn act(&mut self, cell_action: CellAction) {
+        let is_game_running_before_action = self.board.is_game_running();
+        match cell_action {
+            CellAction::Mark(position) => self.board.toggle_flag(&position),
+            CellAction::UnCover(position) => self.board.reveal_cell(&position),
+        }
+
+        if is_game_running_before_action && self.board.is_game_ended() {
+            self.end_time = Some(Instant::now());
+        }
+    }
+
     pub fn get_game_duration(&self) -> Duration {
         match self.end_time {
             Some(end_time) => end_time
@@ -41,4 +53,9 @@ impl Game {
             None => self.start_time.elapsed(),
         }
     }
+}
+
+pub enum CellAction {
+    Mark(Position),
+    UnCover(Position),
 }

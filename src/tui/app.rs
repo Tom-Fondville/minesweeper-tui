@@ -1,6 +1,9 @@
-use crossterm::event::{self, Event};
+use crossterm::event::KeyEvent;
 use ratatui::DefaultTerminal;
-use std::io::{self};
+use std::{
+    io::{self},
+    sync::mpsc::Receiver,
+};
 
 pub mod exiting_view;
 pub mod in_game_view;
@@ -16,6 +19,11 @@ pub enum AppState {
     MainMenu,
     InGame,
     Exiting,
+}
+
+pub enum AppEvent {
+    Input(KeyEvent),
+    Timer,
 }
 
 pub struct App {
@@ -43,9 +51,9 @@ impl App {
         }
     }
 
-    pub fn start(&mut self) -> color_eyre::Result<()> {
+    pub fn start(&mut self, app_event_receiver: &Receiver<AppEvent>) -> color_eyre::Result<()> {
         color_eyre::install()?;
-        let _ = ratatui::run(|terminal| self.run(terminal));
+        let _ = ratatui::run(|terminal| self.run(terminal, app_event_receiver));
         Ok(())
     }
 
@@ -59,9 +67,13 @@ impl App {
         self.change_current_state(AppState::InGame);
     }
 
-    fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    fn run(
+        &mut self,
+        terminal: &mut DefaultTerminal,
+        app_event_receiver: &Receiver<AppEvent>,
+    ) -> io::Result<()> {
         loop {
-            self.handle_tick(terminal);
+            self.handle_tick(terminal, app_event_receiver);
 
             if self.need_exit {
                 break Ok(());
@@ -69,24 +81,37 @@ impl App {
         }
     }
 
-    fn handle_tick(&mut self, terminal: &mut DefaultTerminal) {
+    fn handle_tick(
+        &mut self,
+        terminal: &mut DefaultTerminal,
+        app_event_receiver: &Receiver<AppEvent>,
+    ) {
         match self.current_state {
             AppState::MainMenu => self.main_menu_state.draw(terminal),
             AppState::Exiting => ExitingView::draw(terminal),
             AppState::InGame => self.in_game_view.draw(terminal),
         }
 
-        let event = event::read();
-        if event.is_err() {
-            panic!()
-        }
-
-        if let Event::Key(key_event) = event.unwrap() {
-            match self.current_state {
+        match app_event_receiver.recv().unwrap() {
+            AppEvent::Input(key_event) => match self.current_state {
                 AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
                 AppState::Exiting => ExitingView::handle_key_event(self, key_event),
                 AppState::InGame => InGameView::handle_key_event(self, key_event),
-            }
+            },
+            AppEvent::Timer => (),
         }
+
+        // let event = event::read();
+        // if event.is_err() {
+        //     panic!()
+        // }
+        //
+        // if let Event::Key(key_event) = event.unwrap() {
+        //     match self.current_state {
+        //         AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
+        //         AppState::Exiting => ExitingView::handle_key_event(self, key_event),
+        //         AppState::InGame => InGameView::handle_key_event(self, key_event),
+        //     }
+        // }
     }
 }

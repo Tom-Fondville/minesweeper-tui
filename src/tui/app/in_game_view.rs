@@ -2,7 +2,7 @@ use crossterm::event::{self, KeyCode, KeyEvent};
 use ratatui::{DefaultTerminal, widgets::Widget};
 
 use crate::{
-    game::{Game, difficulty::Difficulty, position::Position},
+    game::{CellAction, Game, difficulty::Difficulty, position::Position},
     tui::{
         app::{App, AppState},
         ui::in_game_ui::InGameUi,
@@ -67,10 +67,10 @@ impl InGameView {
     }
 
     fn reveal_cell(&mut self) {
-        self.game.board.reveal_cell(&Position::new(
+        self.game.act(CellAction::UnCover(Position::new(
             self.cursor_position.row,
             self.cursor_position.column,
-        ));
+        )));
 
         if !self.game.board.is_game_running() {
             self.display_popup(InGameViewPopup::GameStatus);
@@ -78,10 +78,10 @@ impl InGameView {
     }
 
     fn toggle_flag(&mut self) {
-        self.game.board.toggle_flag(&Position::new(
+        self.game.act(CellAction::Mark(Position::new(
             self.cursor_position.row,
             self.cursor_position.column,
-        ));
+        )));
     }
 
     fn move_cursor(&mut self, direction: MoveDirection) {
