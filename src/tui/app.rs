@@ -1,17 +1,18 @@
-use crossterm::event::KeyEvent;
-use ratatui::DefaultTerminal;
+use crossterm::event::{self, Event, KeyEvent};
+use ratatui::{DefaultTerminal, init, restore};
 use std::{
     io::{self},
-    sync::mpsc::Receiver,
+    sync::mpsc::{self, Receiver, Sender},
+    thread,
+    time::Duration,
 };
 
 pub mod exiting_view;
 pub mod in_game_view;
 pub mod main_menu_view;
 
-use crate::{
-    game::difficulty::Difficulty,
-    tui::app::{exiting_view::ExitingView, in_game_view::InGameView, main_menu_view::MainMenuView},
+use crate::tui::app::{
+    exiting_view::ExitingView, in_game_view::InGameView, main_menu_view::MainMenuView,
 };
 
 #[derive(Clone)]
@@ -24,6 +25,7 @@ pub enum AppState {
 pub enum AppEvent {
     Input(KeyEvent),
     Timer,
+    Resize,
 }
 
 pub struct App {
@@ -32,6 +34,8 @@ pub struct App {
     pub main_menu_state: MainMenuView,
     pub in_game_view: InGameView,
     pub need_exit: bool,
+    event_sender: Sender<AppEvent>,
+    event_receiver: Receiver<AppEvent>,
 }
 
 impl Default for App {
@@ -42,18 +46,52 @@ impl Default for App {
 
 impl App {
     pub fn new() -> Self {
+        let (event_sender, event_receiver) = mpsc::channel::<AppEvent>();
         Self {
             current_state: AppState::MainMenu,
             last_state: None,
             main_menu_state: MainMenuView::default(),
             in_game_view: InGameView::default(),
             need_exit: false,
+            event_sender,
+            event_receiver,
         }
     }
 
-    pub fn start(&mut self, app_event_receiver: &Receiver<AppEvent>) -> color_eyre::Result<()> {
+    pub fn start(&mut self) -> color_eyre::Result<()> {
         color_eyre::install()?;
-        let _ = ratatui::run(|terminal| self.run(terminal, app_event_receiver));
+
+        let key_input_event_sender = self.event_sender.clone();
+        thread::spawn(move || {
+            loop {
+                let Ok(event) = event::read() else {
+                    continue;
+                };
+
+                match event {
+                    Event::Key(key_event) => key_input_event_sender
+                        .send(AppEvent::Input(key_event))
+                        .unwrap(),
+                    Event::Resize(_, _) => key_input_event_sender.send(AppEvent::Resize).unwrap(),
+                    Event::FocusGained => (),
+                    Event::FocusLost => (),
+                    Event::Mouse(_) => (),
+                    Event::Paste(_) => (),
+                }
+            }
+        });
+
+        let timer_event_sender = self.event_sender.clone();
+        thread::spawn(move || {
+            loop {
+                thread::sleep(Duration::from_secs(1));
+                timer_event_sender.send(AppEvent::Timer).unwrap()
+            }
+        });
+        let mut terminal = init();
+        let _ = self.run(&mut terminal);
+        restore();
+
         Ok(())
     }
 
@@ -62,18 +100,9 @@ impl App {
         self.current_state = state;
     }
 
-    pub fn start_new_board(&mut self, difficulty: Difficulty) {
-        self.in_game_view.change_difficulty(difficulty);
-        self.change_current_state(AppState::InGame);
-    }
-
-    fn run(
-        &mut self,
-        terminal: &mut DefaultTerminal,
-        app_event_receiver: &Receiver<AppEvent>,
-    ) -> io::Result<()> {
+    fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         loop {
-            self.handle_tick(terminal, app_event_receiver);
+            self.handle_tick(terminal);
 
             if self.need_exit {
                 break Ok(());
@@ -81,37 +110,21 @@ impl App {
         }
     }
 
-    fn handle_tick(
-        &mut self,
-        terminal: &mut DefaultTerminal,
-        app_event_receiver: &Receiver<AppEvent>,
-    ) {
+    fn handle_tick(&mut self, terminal: &mut DefaultTerminal) {
         match self.current_state {
             AppState::MainMenu => self.main_menu_state.draw(terminal),
             AppState::Exiting => ExitingView::draw(terminal),
             AppState::InGame => self.in_game_view.draw(terminal),
         }
 
-        match app_event_receiver.recv().unwrap() {
+        match self.event_receiver.recv().unwrap() {
             AppEvent::Input(key_event) => match self.current_state {
                 AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
                 AppState::Exiting => ExitingView::handle_key_event(self, key_event),
                 AppState::InGame => InGameView::handle_key_event(self, key_event),
             },
             AppEvent::Timer => (),
+            AppEvent::Resize => (),
         }
-
-        // let event = event::read();
-        // if event.is_err() {
-        //     panic!()
-        // }
-        //
-        // if let Event::Key(key_event) = event.unwrap() {
-        //     match self.current_state {
-        //         AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
-        //         AppState::Exiting => ExitingView::handle_key_event(self, key_event),
-        //         AppState::InGame => InGameView::handle_key_event(self, key_event),
-        //     }
-        // }
     }
 }
