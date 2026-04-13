@@ -6,7 +6,6 @@ use std::{
     time::Duration,
 };
 
-pub mod exiting_view;
 pub mod in_game_view;
 pub mod main_menu_view;
 pub mod popup_view_selector;
