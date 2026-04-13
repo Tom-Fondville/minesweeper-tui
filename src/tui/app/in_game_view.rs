@@ -1,3 +1,5 @@
+use std::time::Instant;
+
 use crossterm::event::{self, KeyCode, KeyEvent};
 use ratatui::{DefaultTerminal, widgets::Widget};
 
@@ -168,9 +170,11 @@ impl InGameView {
     fn handle_key_event_default(app: &mut App, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-            KeyCode::Esc => app
-                .in_game_view
-                .display_popup(InGameViewPopup::QuitConfirmation),
+            KeyCode::Esc => {
+                app.in_game_view.game.start_pause_time = Some(Instant::now());
+                app.in_game_view
+                    .display_popup(InGameViewPopup::QuitConfirmation)
+            }
 
             KeyCode::Char('h') => app.in_game_view.move_cursor(MoveDirection::Left),
             KeyCode::Char('j') => app.in_game_view.move_cursor(MoveDirection::Down),
@@ -197,6 +201,7 @@ impl InGameView {
     }
 
     fn handle_key_event_for_quit_confirmation_popup(app: &mut App, key_event: KeyEvent) {
+        app.in_game_view.game.add_pause_duration();
         match key_event.code {
             KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
             KeyCode::Enter => {

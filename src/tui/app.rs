@@ -40,12 +40,6 @@ pub struct App {
 
 impl Default for App {
     fn default() -> Self {
-        Self::new()
-    }
-}
-
-impl App {
-    pub fn new() -> Self {
         let (event_sender, event_receiver) = mpsc::channel::<AppEvent>();
         Self {
             current_state: AppState::MainMenu,
@@ -57,7 +51,9 @@ impl App {
             event_receiver,
         }
     }
+}
 
+impl App {
     pub fn start(&mut self) -> color_eyre::Result<()> {
         color_eyre::install()?;
 
@@ -102,29 +98,25 @@ impl App {
 
     fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         loop {
-            self.handle_tick(terminal);
+            match self.current_state {
+                AppState::MainMenu => self.main_menu_state.draw(terminal),
+                AppState::Exiting => ExitingView::draw(terminal),
+                AppState::InGame => self.in_game_view.draw(terminal),
+            }
+
+            match self.event_receiver.recv().unwrap() {
+                AppEvent::Input(key_event) => match self.current_state {
+                    AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
+                    AppState::Exiting => ExitingView::handle_key_event(self, key_event),
+                    AppState::InGame => InGameView::handle_key_event(self, key_event),
+                },
+                AppEvent::Timer => (),
+                AppEvent::Resize => (),
+            }
 
             if self.need_exit {
                 break Ok(());
             }
-        }
-    }
-
-    fn handle_tick(&mut self, terminal: &mut DefaultTerminal) {
-        match self.current_state {
-            AppState::MainMenu => self.main_menu_state.draw(terminal),
-            AppState::Exiting => ExitingView::draw(terminal),
-            AppState::InGame => self.in_game_view.draw(terminal),
-        }
-
-        match self.event_receiver.recv().unwrap() {
-            AppEvent::Input(key_event) => match self.current_state {
-                AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
-                AppState::Exiting => ExitingView::handle_key_event(self, key_event),
-                AppState::InGame => InGameView::handle_key_event(self, key_event),
-            },
-            AppEvent::Timer => (),
-            AppEvent::Resize => (),
         }
     }
 }

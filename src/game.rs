@@ -11,6 +11,8 @@ pub mod status;
 pub struct Game {
     pub board: Board,
     pub start_time: Instant,
+    pub total_pause_duration: Duration,
+    pub start_pause_time: Option<Instant>,
     pub end_time: Option<Instant>,
 }
 
@@ -19,6 +21,8 @@ impl Game {
         Self {
             board: Board::new(difficulty),
             start_time: Instant::now(),
+            total_pause_duration: Duration::from_secs(0),
+            start_pause_time: None,
             end_time: None,
         }
     }
@@ -46,12 +50,28 @@ impl Game {
     }
 
     pub fn get_game_duration(&self) -> Duration {
-        match self.end_time {
+        if let Some(start_pause_time) = self.start_pause_time {
+            let current_pause_duration = Instant::now() - start_pause_time;
+            return self.start_time.elapsed() - self.total_pause_duration - current_pause_duration;
+        }
+
+        let duration = match self.end_time {
             Some(end_time) => end_time
                 .checked_duration_since(self.start_time)
                 .unwrap_or(self.start_time.elapsed()),
             None => self.start_time.elapsed(),
-        }
+        };
+
+        duration - self.total_pause_duration
+    }
+
+    pub fn add_pause_duration(&mut self) {
+        let Some(start) = self.start_pause_time else {
+            return;
+        };
+
+        self.total_pause_duration += Instant::now() - start;
+        self.start_pause_time = None;
     }
 }
 

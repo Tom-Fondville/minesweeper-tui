@@ -53,15 +53,11 @@ impl<'a> Widget for InGameUi<'a> {
         let body = chunks[1];
         let footer = chunks[2];
 
-        let elapsed_time_in_seconds = self.game.get_game_duration().as_secs();
-        Line::from(format!(
-            " {} - {} - {}:{}",
-            self.game.board.get_difficulty().as_string().bold(),
-            self.game.board.get_status().as_string(),
-            elapsed_time_in_seconds / 60,
-            elapsed_time_in_seconds % 60
-        ))
-        .centered()
+        HeaderUi::new(
+            &self.game.get_game_duration().as_secs(),
+            self.game.board.get_difficulty(),
+            self.game.board.get_status(),
+        )
         .render(header, buf);
 
         BoardUi::new(&self.game.board, self.cursor_position).render(body, buf);
@@ -278,5 +274,41 @@ impl<'a> Widget for GameEndedPopupUi<'a> {
         Paragraph::new(text)
             .block(popup_block)
             .render(popup_area, buf);
+    }
+}
+
+pub struct HeaderUi<'a> {
+    elapsed_time_in_seconds: &'a u64,
+    difficulty: &'a Difficulty,
+    status: &'a Status,
+}
+
+impl<'a> HeaderUi<'a> {
+    pub fn new(
+        elapsed_time_in_seconds: &'a u64,
+        difficulty: &'a Difficulty,
+        status: &'a Status,
+    ) -> Self {
+        Self {
+            elapsed_time_in_seconds,
+            difficulty,
+            status,
+        }
+    }
+}
+impl<'a> Widget for HeaderUi<'a> {
+    fn render(self, area: Rect, buf: &mut Buffer)
+    where
+        Self: Sized,
+    {
+        Line::from(format!(
+            " {} - {} - {}:{}",
+            self.difficulty.as_string().bold(),
+            self.status.as_string(),
+            self.elapsed_time_in_seconds / 60,
+            self.elapsed_time_in_seconds % 60
+        ))
+        .centered()
+        .render(area, buf);
     }
 }

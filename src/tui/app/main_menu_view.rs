@@ -58,6 +58,11 @@ impl MainMenuView {
         self.is_help_menu_displayed = !self.is_help_menu_displayed
     }
 
+    fn start_new_board(app: &mut App, difficulty: Difficulty) {
+        app.in_game_view.change_difficulty(difficulty);
+        app.change_current_state(AppState::InGame);
+    }
+
     pub fn exit_help_menu(&mut self) {
         self.is_help_menu_displayed = false;
     }
@@ -107,7 +112,7 @@ impl MainMenuView {
                         DifficultyUi::Custom => unreachable!(),
                     };
 
-                    app.start_new_board(difficulty);
+                    Self::start_new_board(app, difficulty);
                 }
                 KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
                 KeyCode::Char('?') => app.main_menu_state.toggle_help_menu(),
@@ -130,7 +135,7 @@ impl MainMenuView {
                         return;
                     };
 
-                    app.start_new_board(difficulty);
+                    Self::start_new_board(app, difficulty);
                 }
                 KeyCode::Tab => app.main_menu_state.custom_difficulty_inputs.focus_next(),
                 KeyCode::BackTab => app
@@ -238,7 +243,7 @@ impl CustomDifficultyInputs {
         }
     }
 
-    pub fn create_custom_difficulty(&self) -> Option<Difficulty> {
+    fn create_custom_difficulty(&self) -> Option<Difficulty> {
         if self.rows.is_empty() || self.colomns.is_empty() {
             return None;
         }

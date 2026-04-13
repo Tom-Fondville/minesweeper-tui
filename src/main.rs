@@ -5,7 +5,7 @@ use minesweeper_tui::tui::app::App;
 fn main() {
     init_log();
 
-    let mut app = App::new();
+    let mut app = App::default();
     let _ = app.start();
 }
 
