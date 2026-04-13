@@ -6,7 +6,7 @@ use ratatui::{DefaultTerminal, widgets::Widget};
 use crate::{
     game::{CellAction, Game, difficulty::Difficulty, position::Position},
     tui::{
-        app::{App, AppState},
+        app::{App, AppState, popup_view_selector::PopupViewSelector},
         ui::in_game_ui::InGameUi,
     },
 };
@@ -44,7 +44,7 @@ pub enum InGameViewPopup {
 pub struct InGameView {
     game: Game,
     cursor_position: CursorPositon,
-    displayed_popup: Option<InGameViewPopup>,
+    popup_selector: PopupViewSelector<InGameViewPopup>,
 }
 
 impl Default for InGameView {
@@ -52,7 +52,7 @@ impl Default for InGameView {
         Self {
             game: Game::new(Difficulty::Easy),
             cursor_position: CursorPositon::defualt(),
-            displayed_popup: None,
+            popup_selector: PopupViewSelector::default(),
         }
     }
 }
@@ -60,13 +60,13 @@ impl InGameView {
     pub fn restart(&mut self) {
         self.game.restart();
         self.cursor_position = CursorPositon::defualt();
-        self.displayed_popup = None
+        self.popup_selector.hide_popup();
     }
 
     pub fn change_difficulty(&mut self, difficulty: Difficulty) {
         self.game.change_difficulty(difficulty);
         self.cursor_position = CursorPositon::defualt();
-        self.displayed_popup = None;
+        self.popup_selector.hide_popup();
     }
 
     fn reveal_cell(&mut self) {
@@ -76,7 +76,8 @@ impl InGameView {
         )));
 
         if !self.game.board.is_game_running() {
-            self.display_popup(InGameViewPopup::GameStatus);
+            self.popup_selector
+                .display_popup(InGameViewPopup::GameStatus);
         }
     }
 
@@ -118,30 +119,12 @@ impl InGameView {
         }
     }
 
-    fn toggle_popup(&mut self, popup: InGameViewPopup) {
-        if let Some(displayed_popup) = &self.displayed_popup
-            && *displayed_popup == popup
-        {
-            self.displayed_popup = None
-        }
-
-        self.displayed_popup = Some(popup)
-    }
-
-    fn display_popup(&mut self, popup: InGameViewPopup) {
-        self.displayed_popup = Some(popup)
-    }
-
-    fn hide_popup(&mut self) {
-        self.displayed_popup = None
-    }
-
     pub fn draw(&self, terminal: &mut DefaultTerminal) {
         let _ = terminal.draw(|frame| {
             InGameUi::new(
                 &self.game,
                 &self.cursor_position,
-                self.displayed_popup.as_ref(),
+                self.popup_selector.get_selected(),
             )
             .render(frame.area(), frame.buffer_mut());
         });
@@ -149,7 +132,7 @@ impl InGameView {
 
     pub fn handle_key_event(app: &mut App, key_event: KeyEvent) {
         match key_event.kind {
-            event::KeyEventKind::Press => match &app.in_game_view.displayed_popup {
+            event::KeyEventKind::Press => match &app.in_game_view.popup_selector.get_selected() {
                 Some(dispayed_popup) => match *dispayed_popup {
                     InGameViewPopup::HelpMenu => {
                         Self::handle_key_event_for_help_menu(app, key_event);
@@ -175,10 +158,12 @@ impl InGameView {
         match key_event.code {
             KeyCode::Char('q') => app
                 .in_game_view
+                .popup_selector
                 .toggle_popup(InGameViewPopup::ExitAppConfirmation),
             KeyCode::Esc => {
                 app.in_game_view.game.start_pause_time = Some(Instant::now());
                 app.in_game_view
+                    .popup_selector
                     .display_popup(InGameViewPopup::ExitGameConfirmation)
             }
 
@@ -191,7 +176,10 @@ impl InGameView {
             KeyCode::Char('r') => app.in_game_view.restart(),
             KeyCode::Enter => app.in_game_view.reveal_cell(),
             KeyCode::Char(' ') => app.in_game_view.reveal_cell(),
-            KeyCode::Char('?') => app.in_game_view.display_popup(InGameViewPopup::HelpMenu),
+            KeyCode::Char('?') => app
+                .in_game_view
+                .popup_selector
+                .display_popup(InGameViewPopup::HelpMenu),
             _ => {}
         }
     }
@@ -200,9 +188,13 @@ impl InGameView {
         match key_event.code {
             KeyCode::Char('q') => app
                 .in_game_view
+                .popup_selector
                 .toggle_popup(InGameViewPopup::ExitAppConfirmation),
             KeyCode::Char('r') => app.in_game_view.restart(),
-            KeyCode::Char('h') => app.in_game_view.toggle_popup(InGameViewPopup::GameStatus),
+            KeyCode::Char('h') => app
+                .in_game_view
+                .popup_selector
+                .toggle_popup(InGameViewPopup::GameStatus),
             KeyCode::Esc => app.change_current_state(AppState::MainMenu),
             _ => (),
         }
@@ -213,18 +205,19 @@ impl InGameView {
         match key_event.code {
             KeyCode::Char('q') => app
                 .in_game_view
+                .popup_selector
                 .toggle_popup(InGameViewPopup::ExitAppConfirmation),
             KeyCode::Enter => {
                 app.change_current_state(AppState::MainMenu);
             }
-            _ => app.in_game_view.hide_popup(),
+            _ => app.in_game_view.popup_selector.hide_popup(),
         }
     }
 
     fn handle_key_event_for_help_menu(app: &mut App, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Esc => app.in_game_view.hide_popup(),
-            KeyCode::Char('?') => app.in_game_view.hide_popup(),
+            KeyCode::Esc => app.in_game_view.popup_selector.hide_popup(),
+            KeyCode::Char('?') => app.in_game_view.popup_selector.hide_popup(),
             _ => (),
         }
     }
@@ -232,7 +225,7 @@ impl InGameView {
     fn handle_key_event_for_exit_app_confirmation(app: &mut App, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => app.need_exit = true,
-            _ => app.in_game_view.hide_popup(),
+            _ => app.in_game_view.popup_selector.hide_popup(),
         }
     }
 }

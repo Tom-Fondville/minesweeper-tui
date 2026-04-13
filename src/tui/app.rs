@@ -9,6 +9,7 @@ use std::{
 pub mod exiting_view;
 pub mod in_game_view;
 pub mod main_menu_view;
+pub mod popup_view_selector;
 
 use crate::tui::app::{in_game_view::InGameView, main_menu_view::MainMenuView};
 

@@ -7,7 +7,7 @@ use ratatui::{
 use crate::{
     game::difficulty::Difficulty,
     tui::{
-        app::{App, AppState},
+        app::{App, AppState, popup_view_selector::PopupViewSelector},
         ui::{difficulty_ui::DifficultyUi, main_menu_ui::MainMenuUi},
     },
 };
@@ -22,7 +22,7 @@ pub struct MainMenuView {
     difficulties: [DifficultyUi; 4],
     list_state: ListState,
     custom_difficulty_inputs: CustomDifficultyInputs,
-    displayed_popup: Option<MainMenuViewPopup>,
+    popup_selector: PopupViewSelector<MainMenuViewPopup>,
 }
 
 impl Default for MainMenuView {
@@ -38,7 +38,7 @@ impl Default for MainMenuView {
             ],
             list_state,
             custom_difficulty_inputs: CustomDifficultyInputs::default(),
-            displayed_popup: None,
+            popup_selector: PopupViewSelector::default(),
         }
     }
 }
@@ -60,24 +60,6 @@ impl MainMenuView {
         self.custom_difficulty_inputs.selected_input != SelectedCustomDifficultyInput::None
     }
 
-    fn toggle_popup(&mut self, popup: MainMenuViewPopup) {
-        if let Some(displayed_popup) = &self.displayed_popup
-            && *displayed_popup == popup
-        {
-            self.displayed_popup = None
-        }
-
-        self.displayed_popup = Some(popup)
-    }
-
-    fn display_popup(&mut self, popup: MainMenuViewPopup) {
-        self.displayed_popup = Some(popup)
-    }
-
-    fn hide_popup(&mut self) {
-        self.displayed_popup = None
-    }
-
     fn start_new_board(app: &mut App, difficulty: Difficulty) {
         app.in_game_view.change_difficulty(difficulty);
         app.change_current_state(AppState::InGame);
@@ -89,7 +71,7 @@ impl MainMenuView {
                 &self.difficulties,
                 &self.custom_difficulty_inputs,
                 &self.custom_difficulty_inputs.selected_input,
-                self.displayed_popup.as_ref(),
+                self.popup_selector.get_selected(),
             )
             .render(frame.area(), frame.buffer_mut(), &mut self.list_state)
         });
@@ -105,7 +87,7 @@ impl MainMenuView {
             event::KeyEventKind::Press => match key_event.code {
                 KeyCode::Char('j') => app.main_menu_view.select_next_difficulty(),
                 KeyCode::Char('k') => app.main_menu_view.select_previous_difficulty(),
-                KeyCode::Esc => app.main_menu_view.hide_popup(),
+                KeyCode::Esc => app.main_menu_view.popup_selector.hide_popup(),
                 KeyCode::Tab => {
                     let difficulty_ui = app.main_menu_view.get_selected_difficulty();
                     if *difficulty_ui != DifficultyUi::Custom {
@@ -130,10 +112,11 @@ impl MainMenuView {
 
                     Self::start_new_board(app, difficulty);
                 }
-                KeyCode::Char('q') => match &app.main_menu_view.displayed_popup {
+                KeyCode::Char('q') => match &app.main_menu_view.popup_selector.get_selected() {
                     Some(dispayed_popup) => match dispayed_popup {
                         MainMenuViewPopup::HelpMenu => app
                             .main_menu_view
+                            .popup_selector
                             .display_popup(MainMenuViewPopup::ExitAppConfirmation),
                         MainMenuViewPopup::ExitAppConfirmation => {
                             println!("oui ouoi");
@@ -142,9 +125,13 @@ impl MainMenuView {
                     },
                     None => app
                         .main_menu_view
+                        .popup_selector
                         .display_popup(MainMenuViewPopup::ExitAppConfirmation),
                 },
-                KeyCode::Char('?') => app.main_menu_view.toggle_popup(MainMenuViewPopup::HelpMenu),
+                KeyCode::Char('?') => app
+                    .main_menu_view
+                    .popup_selector
+                    .toggle_popup(MainMenuViewPopup::HelpMenu),
                 _ => (),
             },
             event::KeyEventKind::Repeat => (),
@@ -170,10 +157,11 @@ impl MainMenuView {
                 KeyCode::BackTab => app.main_menu_view.custom_difficulty_inputs.focus_previous(),
                 KeyCode::Backspace => app.main_menu_view.custom_difficulty_inputs.delete(),
                 KeyCode::Char('q') => {
-                    match &app.main_menu_view.displayed_popup {
+                    match &app.main_menu_view.popup_selector.selected_popup {
                         Some(dispayed_popup) => match dispayed_popup {
                             MainMenuViewPopup::HelpMenu => app
                                 .main_menu_view
+                                .popup_selector
                                 .display_popup(MainMenuViewPopup::ExitAppConfirmation),
                             MainMenuViewPopup::ExitAppConfirmation => {
                                 println!("oui ouoi");
@@ -182,12 +170,17 @@ impl MainMenuView {
                         },
                         None => app
                             .main_menu_view
+                            .popup_selector
                             .display_popup(MainMenuViewPopup::ExitAppConfirmation),
                     }
                     app.main_menu_view
+                        .popup_selector
                         .display_popup(MainMenuViewPopup::ExitAppConfirmation)
                 }
-                KeyCode::Char('?') => app.main_menu_view.toggle_popup(MainMenuViewPopup::HelpMenu),
+                KeyCode::Char('?') => app
+                    .main_menu_view
+                    .popup_selector
+                    .toggle_popup(MainMenuViewPopup::HelpMenu),
                 KeyCode::Char(char) => app.main_menu_view.custom_difficulty_inputs.write(char),
                 KeyCode::Esc => app.main_menu_view.custom_difficulty_inputs.un_focus(),
                 _ => (),
