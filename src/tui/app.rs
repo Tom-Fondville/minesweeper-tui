@@ -1,7 +1,6 @@
 use crossterm::event::{self, Event, KeyEvent};
-use ratatui::{DefaultTerminal, init, restore};
+use ratatui::{init, restore};
 use std::{
-    io::{self},
     sync::mpsc::{self, Receiver, Sender},
     thread,
     time::Duration,
@@ -11,15 +10,12 @@ pub mod exiting_view;
 pub mod in_game_view;
 pub mod main_menu_view;
 
-use crate::tui::app::{
-    exiting_view::ExitingView, in_game_view::InGameView, main_menu_view::MainMenuView,
-};
+use crate::tui::app::{in_game_view::InGameView, main_menu_view::MainMenuView};
 
 #[derive(Clone)]
 pub enum AppState {
     MainMenu,
     InGame,
-    Exiting,
 }
 
 pub enum AppEvent {
@@ -31,7 +27,7 @@ pub enum AppEvent {
 pub struct App {
     pub current_state: AppState,
     pub last_state: Option<AppState>,
-    pub main_menu_state: MainMenuView,
+    pub main_menu_view: MainMenuView,
     pub in_game_view: InGameView,
     pub need_exit: bool,
     event_sender: Sender<AppEvent>,
@@ -44,7 +40,7 @@ impl Default for App {
         Self {
             current_state: AppState::MainMenu,
             last_state: None,
-            main_menu_state: MainMenuView::default(),
+            main_menu_view: MainMenuView::default(),
             in_game_view: InGameView::default(),
             need_exit: false,
             event_sender,
@@ -63,7 +59,6 @@ impl App {
                 let Ok(event) = event::read() else {
                     continue;
                 };
-
                 match event {
                     Event::Key(key_event) => key_input_event_sender
                         .send(AppEvent::Input(key_event))
@@ -84,8 +79,27 @@ impl App {
                 timer_event_sender.send(AppEvent::Timer).unwrap()
             }
         });
+
         let mut terminal = init();
-        let _ = self.run(&mut terminal);
+        loop {
+            match self.current_state {
+                AppState::MainMenu => self.main_menu_view.draw(&mut terminal),
+                AppState::InGame => self.in_game_view.draw(&mut terminal),
+            }
+
+            match self.event_receiver.recv().unwrap() {
+                AppEvent::Input(key_event) => match self.current_state {
+                    AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
+                    AppState::InGame => InGameView::handle_key_event(self, key_event),
+                },
+                AppEvent::Timer => (),
+                AppEvent::Resize => (),
+            }
+
+            if self.need_exit {
+                break;
+            }
+        }
         restore();
 
         Ok(())
@@ -94,29 +108,5 @@ impl App {
     pub fn change_current_state(&mut self, state: AppState) {
         self.last_state = Some(self.current_state.clone());
         self.current_state = state;
-    }
-
-    fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
-        loop {
-            match self.current_state {
-                AppState::MainMenu => self.main_menu_state.draw(terminal),
-                AppState::Exiting => ExitingView::draw(terminal),
-                AppState::InGame => self.in_game_view.draw(terminal),
-            }
-
-            match self.event_receiver.recv().unwrap() {
-                AppEvent::Input(key_event) => match self.current_state {
-                    AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
-                    AppState::Exiting => ExitingView::handle_key_event(self, key_event),
-                    AppState::InGame => InGameView::handle_key_event(self, key_event),
-                },
-                AppEvent::Timer => (),
-                AppEvent::Resize => (),
-            }
-
-            if self.need_exit {
-                break Ok(());
-            }
-        }
     }
 }

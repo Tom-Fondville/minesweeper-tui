@@ -12,7 +12,10 @@ use crate::{
     game::{Game, difficulty::Difficulty, status::Status},
     tui::{
         app::in_game_view::{CursorPositon, InGameViewPopup},
-        ui::{board_ui::BoardUi, helpers::rectangle::centered_rectangle_exact},
+        ui::{
+            board_ui::BoardUi, exit_game_confirmation_popup_ui::ExitGameConfirmationPopupUi,
+            helpers::rectangle::centered_rectangle_exact,
+        },
     },
 };
 
@@ -70,8 +73,11 @@ impl<'a> Widget for InGameUi<'a> {
                     &self.game.get_game_duration(),
                 )
                 .render(body, buf),
-                InGameViewPopup::QuitConfirmation => {
-                    ConfirmQuitGamePopupUi::default().render(body, buf)
+                InGameViewPopup::ExitGameConfirmation => {
+                    ExitGameConfirmationPopupUi::default().render(body, buf)
+                }
+                InGameViewPopup::ExitAppConfirmation => {
+                    ExitAppConfirmationPopupUi::default().render(body, buf)
                 }
             }
         }
@@ -140,20 +146,20 @@ impl Widget for InGameHelpMenuPopupUi {
 }
 
 #[derive(Default)]
-pub struct ConfirmQuitGamePopupUi {}
-impl Widget for ConfirmQuitGamePopupUi {
+pub struct ExitAppConfirmationPopupUi {}
+impl Widget for ExitAppConfirmationPopupUi {
     fn render(self, area: Rect, buf: &mut Buffer)
     where
         Self: Sized,
     {
         let popup_block = Block::default()
-            .title(" Quit Confirmation ")
+            .title(" Exit App Confirmation ")
             .borders(Borders::ALL)
             .style(Style::default().bg(Color::Black));
 
         let text = vec![
             Line::from(Span::styled(
-                "⚠ You are about to quit the game",
+                "⚠ You are about to exit the application",
                 Style::default()
                     .fg(Color::Yellow)
                     .add_modifier(Modifier::BOLD),
@@ -162,7 +168,7 @@ impl Widget for ConfirmQuitGamePopupUi {
             Line::from(vec![
                 Span::raw("Press "),
                 Span::styled(
-                    "ENTER",
+                    "q",
                     Style::default().fg(Color::Red).add_modifier(Modifier::BOLD),
                 ),
                 Span::raw(" to confirm"),

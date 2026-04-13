@@ -37,7 +37,8 @@ impl CursorPositon {
 pub enum InGameViewPopup {
     HelpMenu,
     GameStatus,
-    QuitConfirmation,
+    ExitGameConfirmation,
+    ExitAppConfirmation,
 }
 
 pub struct InGameView {
@@ -156,8 +157,11 @@ impl InGameView {
                     InGameViewPopup::GameStatus => {
                         Self::handle_key_event_for_game_status_popup(app, key_event)
                     }
-                    InGameViewPopup::QuitConfirmation => {
-                        Self::handle_key_event_for_quit_confirmation_popup(app, key_event)
+                    InGameViewPopup::ExitGameConfirmation => {
+                        Self::handle_key_event_for_exit_game_confirmation_popup(app, key_event)
+                    }
+                    InGameViewPopup::ExitAppConfirmation => {
+                        Self::handle_key_event_for_exit_app_confirmation(app, key_event)
                     }
                 },
                 None => Self::handle_key_event_default(app, key_event),
@@ -169,11 +173,13 @@ impl InGameView {
 
     fn handle_key_event_default(app: &mut App, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
+            KeyCode::Char('q') => app
+                .in_game_view
+                .toggle_popup(InGameViewPopup::ExitAppConfirmation),
             KeyCode::Esc => {
                 app.in_game_view.game.start_pause_time = Some(Instant::now());
                 app.in_game_view
-                    .display_popup(InGameViewPopup::QuitConfirmation)
+                    .display_popup(InGameViewPopup::ExitGameConfirmation)
             }
 
             KeyCode::Char('h') => app.in_game_view.move_cursor(MoveDirection::Left),
@@ -192,7 +198,9 @@ impl InGameView {
 
     fn handle_key_event_for_game_status_popup(app: &mut App, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
+            KeyCode::Char('q') => app
+                .in_game_view
+                .toggle_popup(InGameViewPopup::ExitAppConfirmation),
             KeyCode::Char('r') => app.in_game_view.restart(),
             KeyCode::Char('h') => app.in_game_view.toggle_popup(InGameViewPopup::GameStatus),
             KeyCode::Esc => app.change_current_state(AppState::MainMenu),
@@ -200,10 +208,12 @@ impl InGameView {
         }
     }
 
-    fn handle_key_event_for_quit_confirmation_popup(app: &mut App, key_event: KeyEvent) {
+    fn handle_key_event_for_exit_game_confirmation_popup(app: &mut App, key_event: KeyEvent) {
         app.in_game_view.game.add_pause_duration();
         match key_event.code {
-            KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
+            KeyCode::Char('q') => app
+                .in_game_view
+                .toggle_popup(InGameViewPopup::ExitAppConfirmation),
             KeyCode::Enter => {
                 app.change_current_state(AppState::MainMenu);
             }
@@ -216,6 +226,13 @@ impl InGameView {
             KeyCode::Esc => app.in_game_view.hide_popup(),
             KeyCode::Char('?') => app.in_game_view.hide_popup(),
             _ => (),
+        }
+    }
+
+    fn handle_key_event_for_exit_app_confirmation(app: &mut App, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('q') => app.need_exit = true,
+            _ => app.in_game_view.hide_popup(),
         }
     }
 }

@@ -12,11 +12,17 @@ use crate::{
     },
 };
 
+#[derive(PartialEq)]
+pub enum MainMenuViewPopup {
+    HelpMenu,
+    ExitAppConfirmation,
+}
+
 pub struct MainMenuView {
     difficulties: [DifficultyUi; 4],
     list_state: ListState,
     custom_difficulty_inputs: CustomDifficultyInputs,
-    is_help_menu_displayed: bool,
+    displayed_popup: Option<MainMenuViewPopup>,
 }
 
 impl Default for MainMenuView {
@@ -32,7 +38,7 @@ impl Default for MainMenuView {
             ],
             list_state,
             custom_difficulty_inputs: CustomDifficultyInputs::default(),
-            is_help_menu_displayed: false,
+            displayed_popup: None,
         }
     }
 }
@@ -54,17 +60,27 @@ impl MainMenuView {
         self.custom_difficulty_inputs.selected_input != SelectedCustomDifficultyInput::None
     }
 
-    fn toggle_help_menu(&mut self) {
-        self.is_help_menu_displayed = !self.is_help_menu_displayed
+    fn toggle_popup(&mut self, popup: MainMenuViewPopup) {
+        if let Some(displayed_popup) = &self.displayed_popup
+            && *displayed_popup == popup
+        {
+            self.displayed_popup = None
+        }
+
+        self.displayed_popup = Some(popup)
+    }
+
+    fn display_popup(&mut self, popup: MainMenuViewPopup) {
+        self.displayed_popup = Some(popup)
+    }
+
+    fn hide_popup(&mut self) {
+        self.displayed_popup = None
     }
 
     fn start_new_board(app: &mut App, difficulty: Difficulty) {
         app.in_game_view.change_difficulty(difficulty);
         app.change_current_state(AppState::InGame);
-    }
-
-    pub fn exit_help_menu(&mut self) {
-        self.is_help_menu_displayed = false;
     }
 
     pub fn draw(&mut self, terminal: &mut DefaultTerminal) {
@@ -73,35 +89,35 @@ impl MainMenuView {
                 &self.difficulties,
                 &self.custom_difficulty_inputs,
                 &self.custom_difficulty_inputs.selected_input,
-                &self.is_help_menu_displayed,
+                self.displayed_popup.as_ref(),
             )
             .render(frame.area(), frame.buffer_mut(), &mut self.list_state)
         });
     }
 
     pub fn handle_key_event(app: &mut App, key_event: KeyEvent) {
-        if app.main_menu_state.is_custom_difficulty_selected() {
+        if app.main_menu_view.is_custom_difficulty_selected() {
             Self::handle_key_event_when_custom_difficulty_selected(app, key_event);
             return;
         }
 
         match key_event.kind {
             event::KeyEventKind::Press => match key_event.code {
-                KeyCode::Char('j') => app.main_menu_state.select_next_difficulty(),
-                KeyCode::Char('k') => app.main_menu_state.select_previous_difficulty(),
-                KeyCode::Esc => app.main_menu_state.exit_help_menu(),
+                KeyCode::Char('j') => app.main_menu_view.select_next_difficulty(),
+                KeyCode::Char('k') => app.main_menu_view.select_previous_difficulty(),
+                KeyCode::Esc => app.main_menu_view.hide_popup(),
                 KeyCode::Tab => {
-                    let difficulty_ui = app.main_menu_state.get_selected_difficulty();
+                    let difficulty_ui = app.main_menu_view.get_selected_difficulty();
                     if *difficulty_ui != DifficultyUi::Custom {
                         return;
                     }
 
-                    app.main_menu_state.custom_difficulty_inputs.focus();
+                    app.main_menu_view.custom_difficulty_inputs.focus();
                 }
                 KeyCode::Enter => {
-                    let difficulty_ui = app.main_menu_state.get_selected_difficulty();
+                    let difficulty_ui = app.main_menu_view.get_selected_difficulty();
                     if *difficulty_ui == DifficultyUi::Custom {
-                        app.main_menu_state.custom_difficulty_inputs.focus();
+                        app.main_menu_view.custom_difficulty_inputs.focus();
                         return;
                     }
 
@@ -114,8 +130,21 @@ impl MainMenuView {
 
                     Self::start_new_board(app, difficulty);
                 }
-                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-                KeyCode::Char('?') => app.main_menu_state.toggle_help_menu(),
+                KeyCode::Char('q') => match &app.main_menu_view.displayed_popup {
+                    Some(dispayed_popup) => match dispayed_popup {
+                        MainMenuViewPopup::HelpMenu => app
+                            .main_menu_view
+                            .display_popup(MainMenuViewPopup::ExitAppConfirmation),
+                        MainMenuViewPopup::ExitAppConfirmation => {
+                            println!("oui ouoi");
+                            app.need_exit = true
+                        }
+                    },
+                    None => app
+                        .main_menu_view
+                        .display_popup(MainMenuViewPopup::ExitAppConfirmation),
+                },
+                KeyCode::Char('?') => app.main_menu_view.toggle_popup(MainMenuViewPopup::HelpMenu),
                 _ => (),
             },
             event::KeyEventKind::Repeat => (),
@@ -128,7 +157,7 @@ impl MainMenuView {
             event::KeyEventKind::Press => match key_event.code {
                 KeyCode::Enter => {
                     let Some(difficulty) = app
-                        .main_menu_state
+                        .main_menu_view
                         .custom_difficulty_inputs
                         .create_custom_difficulty()
                     else {
@@ -137,16 +166,30 @@ impl MainMenuView {
 
                     Self::start_new_board(app, difficulty);
                 }
-                KeyCode::Tab => app.main_menu_state.custom_difficulty_inputs.focus_next(),
-                KeyCode::BackTab => app
-                    .main_menu_state
-                    .custom_difficulty_inputs
-                    .focus_previous(),
-                KeyCode::Backspace => app.main_menu_state.custom_difficulty_inputs.delete(),
-                KeyCode::Char('q') => app.change_current_state(AppState::Exiting),
-                KeyCode::Char('?') => app.main_menu_state.toggle_help_menu(),
-                KeyCode::Char(char) => app.main_menu_state.custom_difficulty_inputs.write(char),
-                KeyCode::Esc => app.main_menu_state.custom_difficulty_inputs.un_focus(),
+                KeyCode::Tab => app.main_menu_view.custom_difficulty_inputs.focus_next(),
+                KeyCode::BackTab => app.main_menu_view.custom_difficulty_inputs.focus_previous(),
+                KeyCode::Backspace => app.main_menu_view.custom_difficulty_inputs.delete(),
+                KeyCode::Char('q') => {
+                    match &app.main_menu_view.displayed_popup {
+                        Some(dispayed_popup) => match dispayed_popup {
+                            MainMenuViewPopup::HelpMenu => app
+                                .main_menu_view
+                                .display_popup(MainMenuViewPopup::ExitAppConfirmation),
+                            MainMenuViewPopup::ExitAppConfirmation => {
+                                println!("oui ouoi");
+                                app.need_exit = true
+                            }
+                        },
+                        None => app
+                            .main_menu_view
+                            .display_popup(MainMenuViewPopup::ExitAppConfirmation),
+                    }
+                    app.main_menu_view
+                        .display_popup(MainMenuViewPopup::ExitAppConfirmation)
+                }
+                KeyCode::Char('?') => app.main_menu_view.toggle_popup(MainMenuViewPopup::HelpMenu),
+                KeyCode::Char(char) => app.main_menu_view.custom_difficulty_inputs.write(char),
+                KeyCode::Esc => app.main_menu_view.custom_difficulty_inputs.un_focus(),
                 _ => (),
             },
             event::KeyEventKind::Repeat => (),

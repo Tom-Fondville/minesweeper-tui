@@ -9,15 +9,20 @@ use ratatui::{
 };
 
 use crate::tui::{
-    app::main_menu_view::{CustomDifficultyInputs, SelectedCustomDifficultyInput},
-    ui::{difficulty_ui::DifficultyUi, helpers::rectangle::centered_rectangle_exact},
+    app::main_menu_view::{
+        CustomDifficultyInputs, MainMenuViewPopup, SelectedCustomDifficultyInput,
+    },
+    ui::{
+        difficulty_ui::DifficultyUi, helpers::rectangle::centered_rectangle_exact,
+        in_game_ui::ExitAppConfirmationPopupUi,
+    },
 };
 
 pub struct MainMenuUi<'a> {
     difficulties: &'a [DifficultyUi; 4],
     custom_difficulty_inputs: &'a CustomDifficultyInputs,
     selected_input: &'a SelectedCustomDifficultyInput,
-    display_help_menu: &'a bool,
+    displayed_popup: Option<&'a MainMenuViewPopup>,
 }
 
 impl<'a> MainMenuUi<'a> {
@@ -25,13 +30,13 @@ impl<'a> MainMenuUi<'a> {
         difficulties: &'a [DifficultyUi; 4],
         custom_difficulty_inputs: &'a CustomDifficultyInputs,
         selected_input: &'a SelectedCustomDifficultyInput,
-        display_help_menu: &'a bool,
+        displayed_popup: Option<&'a MainMenuViewPopup>,
     ) -> Self {
         Self {
             difficulties,
             custom_difficulty_inputs,
             selected_input,
-            display_help_menu,
+            displayed_popup,
         }
     }
 
@@ -88,9 +93,14 @@ impl<'a> StatefulWidget for MainMenuUi<'a> {
                 .render(body_layout[1], buf);
         }
 
-        if *self.display_help_menu {
-            MainMenuHelpMenuPopupUi::default().render(body, buf);
-        }
+        if let Some(displayed_popup) = self.displayed_popup {
+            match displayed_popup {
+                MainMenuViewPopup::HelpMenu => MainMenuHelpMenuPopupUi::default().render(body, buf),
+                MainMenuViewPopup::ExitAppConfirmation => {
+                    ExitAppConfirmationPopupUi::default().render(body, buf)
+                }
+            }
+        };
 
         let footer_layout =
             Layout::horizontal(vec![Constraint::Percentage(50), Constraint::Percentage(50)])
