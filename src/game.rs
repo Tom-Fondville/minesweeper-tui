@@ -21,7 +21,7 @@ impl Game {
         Self {
             board: Board::new(difficulty),
             start_time: Instant::now(),
-            total_pause_duration: Duration::from_secs(0),
+            total_pause_duration: Duration::default(),
             start_pause_time: None,
             end_time: None,
         }
@@ -30,11 +30,15 @@ impl Game {
     pub fn restart(&mut self) {
         self.board = Board::new(*self.board.get_difficulty());
         self.start_time = Instant::now();
+        self.start_pause_time = None;
+        self.total_pause_duration = Duration::default();
     }
 
     pub fn change_difficulty(&mut self, difficulty: Difficulty) {
         self.board = Board::new(difficulty);
         self.start_time = Instant::now();
+        self.start_pause_time = None;
+        self.total_pause_duration = Duration::default();
     }
 
     pub fn act(&mut self, cell_action: CellAction) {
