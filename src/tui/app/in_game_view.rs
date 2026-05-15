@@ -88,6 +88,128 @@ impl InGameView {
         )));
     }
 
+    fn move_cursor_to_next_unrevealed_cell(&mut self, direction: MoveDirection) {
+        if !self.game.board.is_game_running() {
+            return;
+        }
+
+        match direction {
+            MoveDirection::Up => {
+                if self.cursor_position.row == 0 {
+                    return;
+                }
+
+                let next_unrevealed_cell = self
+                    .game
+                    .board
+                    .get_grid()
+                    .iter()
+                    .enumerate()
+                    .take((self.cursor_position.row) as usize)
+                    .rev()
+                    .find(|(_, row)| {
+                        let cell = row.get(self.cursor_position.column as usize);
+                        let Some(cell) = cell else {
+                            return false;
+                        };
+
+                        !cell.is_revealed()
+                    });
+
+                let Some(next_unrevealed_cell) = next_unrevealed_cell else {
+                    return;
+                };
+
+                self.cursor_position =
+                    CursorPositon::new(next_unrevealed_cell.0 as u16, self.cursor_position.column)
+            }
+            MoveDirection::Down => {
+                if self.cursor_position.row == self.game.board.get_rows_count() {
+                    return;
+                }
+
+                let next_unrevealed_cell = self
+                    .game
+                    .board
+                    .get_grid()
+                    .iter()
+                    .enumerate()
+                    .skip((self.cursor_position.row + 1) as usize)
+                    .find(|(_, row)| {
+                        let cell = row.get(self.cursor_position.column as usize);
+                        let Some(cell) = cell else {
+                            return false;
+                        };
+
+                        !cell.is_revealed()
+                    });
+
+                let Some(next_unrevealed_cell) = next_unrevealed_cell else {
+                    return;
+                };
+
+                self.cursor_position =
+                    CursorPositon::new(next_unrevealed_cell.0 as u16, self.cursor_position.column)
+            }
+            MoveDirection::Right => {
+                if self.cursor_position.column == self.game.board.get_columns_count() {
+                    return;
+                }
+
+                let current_row = self
+                    .game
+                    .board
+                    .get_grid()
+                    .get(self.cursor_position.row as usize);
+
+                let Some(current_row) = current_row else {
+                    return;
+                };
+
+                let next_unrevealed_cell = current_row
+                    .iter()
+                    .enumerate()
+                    .skip((self.cursor_position.column + 1) as usize)
+                    .find(|(_, cell)| !cell.is_revealed());
+
+                let Some(next_unrevealed_cell) = next_unrevealed_cell else {
+                    return;
+                };
+
+                self.cursor_position =
+                    CursorPositon::new(self.cursor_position.row, next_unrevealed_cell.0 as u16)
+            }
+            MoveDirection::Left => {
+                if self.cursor_position.column == 0 {
+                    return;
+                }
+
+                let current_row = self
+                    .game
+                    .board
+                    .get_grid()
+                    .get(self.cursor_position.row as usize);
+
+                let Some(current_row) = current_row else {
+                    return;
+                };
+
+                let previous_unrevealed_cell = current_row
+                    .iter()
+                    .enumerate()
+                    .take((self.cursor_position.column) as usize)
+                    .rev()
+                    .find(|(_, cell)| !cell.is_revealed());
+
+                let Some(next_unrevealed_cell) = previous_unrevealed_cell else {
+                    return;
+                };
+
+                self.cursor_position =
+                    CursorPositon::new(self.cursor_position.row, next_unrevealed_cell.0 as u16)
+            }
+        }
+    }
     fn move_cursor(&mut self, direction: MoveDirection) {
         if !self.game.board.is_game_running() {
             return;
@@ -176,6 +298,19 @@ impl InGameView {
             KeyCode::Down => app.in_game_view.move_cursor(MoveDirection::Down),
             KeyCode::Up => app.in_game_view.move_cursor(MoveDirection::Up),
             KeyCode::Right => app.in_game_view.move_cursor(MoveDirection::Right),
+
+            KeyCode::Char('e') => app
+                .in_game_view
+                .move_cursor_to_next_unrevealed_cell(MoveDirection::Right),
+            KeyCode::Char('b') => app
+                .in_game_view
+                .move_cursor_to_next_unrevealed_cell(MoveDirection::Left),
+            KeyCode::Char('{') => app
+                .in_game_view
+                .move_cursor_to_next_unrevealed_cell(MoveDirection::Up),
+            KeyCode::Char('}') => app
+                .in_game_view
+                .move_cursor_to_next_unrevealed_cell(MoveDirection::Down),
 
             KeyCode::Char('f') => app.in_game_view.toggle_flag(),
             KeyCode::Char('r') => app.in_game_view.restart(),
