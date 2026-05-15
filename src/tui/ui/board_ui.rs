@@ -67,7 +67,9 @@ impl<'a> Widget for BoardUi<'a> {
                 "your terminal is to small to display the grid, please rezise your terminal",
             )
             .centered()
-            .fg(Color::Red)
+            .fg(Color::Yellow)
+            .bold()
+            .bg(Color::LightRed)
             .render(area, buf);
             return;
         }
