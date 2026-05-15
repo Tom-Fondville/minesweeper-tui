@@ -172,6 +172,11 @@ impl InGameView {
             KeyCode::Char('k') => app.in_game_view.move_cursor(MoveDirection::Up),
             KeyCode::Char('l') => app.in_game_view.move_cursor(MoveDirection::Right),
 
+            KeyCode::Left => app.in_game_view.move_cursor(MoveDirection::Left),
+            KeyCode::Down => app.in_game_view.move_cursor(MoveDirection::Down),
+            KeyCode::Up => app.in_game_view.move_cursor(MoveDirection::Up),
+            KeyCode::Right => app.in_game_view.move_cursor(MoveDirection::Right),
+
             KeyCode::Char('f') => app.in_game_view.toggle_flag(),
             KeyCode::Char('r') => app.in_game_view.restart(),
             KeyCode::Enter => app.in_game_view.reveal_cell(),

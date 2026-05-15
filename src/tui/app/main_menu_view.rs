@@ -87,6 +87,8 @@ impl MainMenuView {
             event::KeyEventKind::Press => match key_event.code {
                 KeyCode::Char('j') => app.main_menu_view.select_next_difficulty(),
                 KeyCode::Char('k') => app.main_menu_view.select_previous_difficulty(),
+                KeyCode::Down => app.main_menu_view.select_next_difficulty(),
+                KeyCode::Up => app.main_menu_view.select_previous_difficulty(),
                 KeyCode::Esc => app.main_menu_view.popup_selector.hide_popup(),
                 KeyCode::Tab => {
                     let difficulty_ui = app.main_menu_view.get_selected_difficulty();
