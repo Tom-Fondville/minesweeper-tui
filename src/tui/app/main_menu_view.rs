@@ -120,10 +120,7 @@ impl MainMenuView {
                             .main_menu_view
                             .popup_selector
                             .display_popup(MainMenuViewPopup::ExitAppConfirmation),
-                        MainMenuViewPopup::ExitAppConfirmation => {
-                            println!("oui ouoi");
-                            app.need_exit = true
-                        }
+                        MainMenuViewPopup::ExitAppConfirmation => app.need_exit = true,
                     },
                     None => app
                         .main_menu_view
@@ -165,10 +162,7 @@ impl MainMenuView {
                                 .main_menu_view
                                 .popup_selector
                                 .display_popup(MainMenuViewPopup::ExitAppConfirmation),
-                            MainMenuViewPopup::ExitAppConfirmation => {
-                                println!("oui ouoi");
-                                app.need_exit = true
-                            }
+                            MainMenuViewPopup::ExitAppConfirmation => app.need_exit = true,
                         },
                         None => app
                             .main_menu_view
