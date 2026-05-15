@@ -57,13 +57,14 @@ impl<'a> Widget for InGameUi<'a> {
         let footer = chunks[2];
 
         HeaderUi::new(
-            &self.game.get_game_duration().as_secs(),
+            &self.game.get_game_duration(),
             self.game.board.get_difficulty(),
             self.game.board.get_status(),
         )
         .render(header, buf);
 
         BoardUi::new(&self.game.board, self.cursor_position).render(body, buf);
+
         if let Some(displayed_popup) = self.displayed_popup {
             match displayed_popup {
                 InGameViewPopup::HelpMenu => InGameHelpMenuPopupUi::default().render(body, buf),
@@ -220,9 +221,10 @@ impl<'a> Widget for GameEndedPopupUi<'a> {
         let mut text = vec![
             Line::from(Span::styled(
                 format!(
-                    "Game ended in {}min {}s",
+                    "Game ended in {}min {:02}s {:03}ms",
                     self.duration.as_secs() / 60,
-                    self.duration.as_secs() % 60
+                    self.duration.as_secs() % 60,
+                    self.duration.as_millis() % 1000
                 ),
                 Style::default()
                     .fg(Color::Yellow)
@@ -284,19 +286,19 @@ impl<'a> Widget for GameEndedPopupUi<'a> {
 }
 
 pub struct HeaderUi<'a> {
-    elapsed_time_in_seconds: &'a u64,
+    game_duration: &'a Duration,
     difficulty: &'a Difficulty,
     status: &'a Status,
 }
 
 impl<'a> HeaderUi<'a> {
     pub fn new(
-        elapsed_time_in_seconds: &'a u64,
+        game_duration: &'a Duration,
         difficulty: &'a Difficulty,
         status: &'a Status,
     ) -> Self {
         Self {
-            elapsed_time_in_seconds,
+            game_duration,
             difficulty,
             status,
         }
@@ -308,11 +310,12 @@ impl<'a> Widget for HeaderUi<'a> {
         Self: Sized,
     {
         Line::from(format!(
-            " {} - {} - {}:{}",
+            " {} - {} - {}:{:02}.{:03}",
             self.difficulty.as_string().bold(),
             self.status.as_string(),
-            self.elapsed_time_in_seconds / 60,
-            self.elapsed_time_in_seconds % 60
+            self.game_duration.as_secs() / 60,
+            self.game_duration.as_secs() % 60,
+            self.game_duration.as_millis() % 1000
         ))
         .centered()
         .render(area, buf);

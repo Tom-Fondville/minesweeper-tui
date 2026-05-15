@@ -75,18 +75,19 @@ impl App {
         let timer_event_sender = self.event_sender.clone();
         thread::spawn(move || {
             loop {
-                thread::sleep(Duration::from_secs(1));
+                thread::sleep(Duration::from_millis(10));
                 timer_event_sender.send(AppEvent::Timer).unwrap()
             }
         });
 
         let mut terminal = init();
-        loop {
-            match self.current_state {
-                AppState::MainMenu => self.main_menu_view.draw(&mut terminal),
-                AppState::InGame => self.in_game_view.draw(&mut terminal),
-            }
 
+        match self.current_state {
+            AppState::MainMenu => self.main_menu_view.draw(&mut terminal),
+            AppState::InGame => self.in_game_view.draw(&mut terminal),
+        }
+
+        loop {
             match self.event_receiver.recv().unwrap() {
                 AppEvent::Input(key_event) => match self.current_state {
                     AppState::MainMenu => MainMenuView::handle_key_event(self, key_event),
@@ -98,6 +99,11 @@ impl App {
 
             if self.need_exit {
                 break;
+            }
+
+            match self.current_state {
+                AppState::MainMenu => self.main_menu_view.draw(&mut terminal),
+                AppState::InGame => self.in_game_view.draw(&mut terminal),
             }
         }
         restore();
