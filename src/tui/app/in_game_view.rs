@@ -38,6 +38,7 @@ pub enum InGameViewPopup {
     HelpMenu,
     GameStatus,
     ExitGameConfirmation,
+    RestartGameConfirmation,
     ExitAppConfirmation,
 }
 
@@ -268,6 +269,9 @@ impl InGameView {
                     InGameViewPopup::ExitAppConfirmation => {
                         Self::handle_key_event_for_exit_app_confirmation(app, key_event)
                     }
+                    InGameViewPopup::RestartGameConfirmation => {
+                        Self::handle_key_for_restart_game_confirmation_popup(app, key_event)
+                    }
                 },
                 None => Self::handle_key_event_default(app, key_event),
             },
@@ -313,7 +317,10 @@ impl InGameView {
                 .move_cursor_to_next_unrevealed_cell(MoveDirection::Down),
 
             KeyCode::Char('f') => app.in_game_view.toggle_flag(),
-            KeyCode::Char('r') => app.in_game_view.restart(),
+            KeyCode::Char('r') => app
+                .in_game_view
+                .popup_selector
+                .display_popup(InGameViewPopup::RestartGameConfirmation),
             KeyCode::Enter => app.in_game_view.reveal_cell(),
             KeyCode::Char(' ') => app.in_game_view.reveal_cell(),
             KeyCode::Char('?') => app
@@ -354,17 +361,23 @@ impl InGameView {
         }
     }
 
-    fn handle_key_event_for_help_menu(app: &mut App, key_event: KeyEvent) {
-        match key_event.code {
-            KeyCode::Esc => app.in_game_view.popup_selector.hide_popup(),
-            KeyCode::Char('?') => app.in_game_view.popup_selector.hide_popup(),
-            _ => (),
-        }
+    fn handle_key_event_for_help_menu(app: &mut App, _: KeyEvent) {
+        app.in_game_view.popup_selector.hide_popup()
     }
 
     fn handle_key_event_for_exit_app_confirmation(app: &mut App, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') => app.need_exit = true,
+            _ => app.in_game_view.popup_selector.hide_popup(),
+        }
+    }
+
+    fn handle_key_for_restart_game_confirmation_popup(app: &mut App, key_event: KeyEvent) {
+        match key_event.code {
+            KeyCode::Char('r') => {
+                app.in_game_view.game.restart();
+                app.in_game_view.popup_selector.hide_popup();
+            }
             _ => app.in_game_view.popup_selector.hide_popup(),
         }
     }
